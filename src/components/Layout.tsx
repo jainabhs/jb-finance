@@ -1,0 +1,296 @@
+import { NavLink, Outlet } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Wallet,
+  Users,
+  Calculator,
+  IndianRupee,
+  UserSquare2,
+  Moon,
+  Sun,
+  History,
+  LogOut,
+  ChevronDown,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useMockData } from "../lib/MockContext";
+import { useTheme } from "../lib/ThemeContext";
+import { useAuth } from "../lib/AuthContext";
+import { cn } from "../lib/utils";
+import { Toaster } from "react-hot-toast";
+import { usePrivacy } from "../lib/PrivacyContext";
+import { useState } from "react";
+
+const navigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, short: "Home" },
+  { name: "Borrowers", href: "/borrowers", icon: Users, short: "Borr" },
+  { name: "Loans", href: "/loans", icon: Wallet, short: "Loan" },
+  { name: "Interest", href: "/interest", icon: Calculator, short: "Calc" },
+  { name: "History", href: "/history", icon: History, short: "Hist" },
+];
+
+export function Layout() {
+  const { borrowers, globalBorrowerId, setGlobalBorrowerId } = useMockData();
+  const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+  const { masked, toggleMask } = usePrivacy();
+  const [borrowerOpen, setBorrowerOpen] = useState(false);
+
+  const activeBorrower = borrowers.find((b) => b.id === globalBorrowerId);
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
+      {/* ─── Header ─── */}
+      <header className="sticky top-0 z-50 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex h-14 items-center justify-between gap-3">
+            {/* Logo */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-md shadow-amber-500/20">
+                <IndianRupee className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white hidden sm:block">
+                JB Finance
+              </span>
+            </div>
+
+            {/* Desktop nav */}
+            <nav className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
+              {navigation.map((item) => (
+                <NavLink
+                  key={item.name}
+                  to={item.href}
+                  className={({ isActive }) =>
+                    cn(
+                      "relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all",
+                      isActive
+                        ? "text-sky-700 dark:text-sky-300 font-semibold"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50",
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          isActive
+                            ? "text-sky-600 dark:text-sky-400"
+                            : "text-slate-400 dark:text-slate-500",
+                        )}
+                      />
+                      {item.name}
+                      {isActive && (
+                        <motion.div
+                          layoutId="topnav-indicator"
+                          className="absolute -bottom-[11px] left-3 right-3 h-0.5 bg-sky-500 rounded-full"
+                        />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* Right controls */}
+            <div className="flex items-center gap-2">
+              {/* Privacy toggle */}
+              <button
+                onClick={toggleMask}
+                className={cn(
+                  "w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border transition-all",
+                  masked
+                    ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700",
+                )}
+                title={masked ? "Show amounts" : "Hide amounts"}
+              >
+                {masked ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-slate-500 dark:text-slate-400"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {theme === "light" ? (
+                    <motion.div
+                      key="moon"
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      <Moon className="w-3.5 h-3.5" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="sun"
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                    >
+                      <Sun className="w-3.5 h-3.5" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </button>
+
+              {/* Logout */}
+              {user && (
+                <button
+                  onClick={signOut}
+                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/15 transition-all text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
+                  title={user.email || "Sign out"}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Borrower selector */}
+              <div className="relative">
+                <button
+                  onClick={() => setBorrowerOpen(!borrowerOpen)}
+                  className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-2.5 py-1.5 transition-all max-w-[160px] sm:max-w-[200px]"
+                >
+                  <UserSquare2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                    {activeBorrower?.fullName || "All"}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0 transition-transform",
+                      borrowerOpen && "rotate-180",
+                    )}
+                  />
+                </button>
+                <AnimatePresence>
+                  {borrowerOpen && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-40"
+                        onClick={() => setBorrowerOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute top-full right-0 mt-1.5 z-50 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl shadow-slate-200/60 dark:shadow-slate-950/60 overflow-hidden max-h-64 overflow-y-auto"
+                      >
+                        <button
+                          onClick={() => {
+                            setGlobalBorrowerId(null);
+                            setBorrowerOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-2.5 text-xs transition-colors",
+                            !globalBorrowerId
+                              ? "bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold"
+                              : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50",
+                          )}
+                        >
+                          All Borrowers
+                        </button>
+                        {borrowers.length > 0 && (
+                          <div className="h-px bg-slate-100 dark:bg-slate-700/50" />
+                        )}
+                        {borrowers.map((b) => (
+                          <button
+                            key={b.id}
+                            onClick={() => {
+                              setGlobalBorrowerId(b.id);
+                              setBorrowerOpen(false);
+                            }}
+                            className={cn(
+                              "w-full text-left px-4 py-2.5 text-xs transition-colors",
+                              globalBorrowerId === b.id
+                                ? "bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold"
+                                : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50",
+                            )}
+                          >
+                            {b.fullName}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ─── Main ─── */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-28 md:pb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full"
+        >
+          <Outlet />
+        </motion.div>
+      </main>
+
+      {/* ─── Mobile Dock ─── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-2 pointer-events-none">
+        <nav className="flex items-center justify-around bg-white/75 dark:bg-slate-900/75 backdrop-blur-2xl border border-slate-200/60 dark:border-slate-700/50 p-1.5 rounded-2xl shadow-lg shadow-slate-900/10 dark:shadow-black/40 pointer-events-auto">
+          {navigation.map((item) => (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              className={({ isActive }) =>
+                cn(
+                  "relative flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all flex-1 min-w-0",
+                  isActive
+                    ? "text-sky-600 dark:text-sky-400"
+                    : "text-slate-400 dark:text-slate-500 active:text-slate-600",
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.div
+                      layoutId="dock-pill"
+                      className="absolute inset-0 bg-sky-500/10 dark:bg-sky-500/15 rounded-xl"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                  <item.icon
+                    className={cn(
+                      "w-5 h-5 relative z-10 transition-transform",
+                      isActive && "scale-110",
+                    )}
+                  />
+                  <span className="text-[9px] font-bold tracking-wider uppercase mt-0.5 relative z-10">
+                    {item.short}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
+
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          className:
+            "!bg-white dark:!bg-slate-800 !text-slate-900 dark:!text-slate-100 !border !border-slate-200 dark:!border-slate-700 !shadow-lg !text-sm !rounded-xl",
+          duration: 2500,
+          style: { marginTop: "4px" },
+        }}
+      />
+    </div>
+  );
+}
