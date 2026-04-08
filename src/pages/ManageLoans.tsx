@@ -27,6 +27,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Select } from "../components/ui/Select";
 import { format, differenceInMonths } from "date-fns";
+import { shortId } from "../lib/utils";
 import { usePrivacy } from "../lib/PrivacyContext";
 
 export default function ManageLoans() {
@@ -520,9 +521,9 @@ export default function ManageLoans() {
                       )}
                     </div>
                     <span
-                      className={`text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white leading-none transition-colors ${!isClosed ? "group-hover:text-blue-600 dark:group-hover:text-sky-400" : ""}`}
+                      className={`text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white leading-none transition-colors ${!isClosed ? "group-hover:text-blue-600 dark:group-hover:text-sky-400" : ""}`}
                     >
-                      {l.id}
+                      {shortId(l.id)}
                     </span>
                   </div>
                   {!isClosed && (
@@ -886,7 +887,7 @@ export default function ManageLoans() {
                       Close Loan
                     </h3>
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-mono tracking-wider mt-0.5">
-                      {closureTarget.id} —{" "}
+                      {shortId(closureTarget.id)} —{" "}
                       {borrowers.find((b) => b.id === closureTarget.borrowerId)?.fullName}
                     </p>
                   </div>
@@ -1042,8 +1043,8 @@ export default function ManageLoans() {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-lg font-black font-mono text-slate-900 dark:text-white">
-                            {quickView.id}
+                          <span className="text-base font-black font-mono text-slate-900 dark:text-white">
+                            {shortId(quickView.id)}
                           </span>
                           {qClosed && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -1262,7 +1263,7 @@ export default function ManageLoans() {
                 <p className="text-slate-500 dark:text-slate-400 text-sm text-center leading-relaxed mb-3">
                   This will permanently delete{" "}
                   <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
-                    {deleteTarget.id}
+                    {shortId(deleteTarget.id)}
                   </span>{" "}
                   and all its interest records. This action cannot be undone.
                 </p>

@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useMockData } from "../lib/MockContext";
 import { usePrivacy } from "../lib/PrivacyContext";
+import { shortId } from "../lib/utils";
 import { calculateCompoundInterest } from "../lib/interest";
 
 export default function Dashboard() {
@@ -235,7 +236,7 @@ export default function Dashboard() {
                       {borrower?.fullName || "Unknown"}
                     </p>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                      {interest.loanId} ·{" "}
+                      {shortId(interest.loanId)} ·{" "}
                       {new Date(interest.createdAt).toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "short",

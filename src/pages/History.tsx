@@ -9,8 +9,6 @@ import {
   AlertOctagon,
   Lock,
   ChevronDown,
-  TrendingUp,
-  Layers,
   Clock,
   Download,
 } from "lucide-react";
@@ -21,6 +19,7 @@ import { format } from "date-fns";
 import { Select } from "../components/ui/Select";
 import toast from "react-hot-toast";
 import { usePrivacy } from "../lib/PrivacyContext";
+import { shortId } from "../lib/utils";
 
 export default function History() {
   const { loans, borrowers, interests, globalBorrowerId, deleteInterest } = useMockData();
@@ -159,51 +158,37 @@ export default function History() {
       </div>
 
       {/* ══════ Stats Strip ══════ */}
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-2">
         {[
           {
-            label: "Total Collected",
+            label: "Collected",
             value: m(totalCollected),
-            icon: TrendingUp,
-            gradient: "linear-gradient(135deg, #059669, #10b981)",
-            shadow: "rgba(16,185,129,0.2)",
+            color: "text-emerald-600 dark:text-emerald-400",
+            bg: "bg-emerald-500/10",
           },
           {
             label: "Records",
             value: allHistory.length.toString(),
-            icon: Layers,
-            gradient: "linear-gradient(135deg, #2563eb, #3b82f6)",
-            shadow: "rgba(59,130,246,0.2)",
+            color: "text-sky-600 dark:text-sky-400",
+            bg: "bg-sky-500/10",
           },
           {
-            label: "Active Facilities",
+            label: "Facilities",
             value: uniqueLoanCount.toString(),
-            icon: Wallet,
-            gradient: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-            shadow: "rgba(124,58,237,0.2)",
+            color: "text-violet-600 dark:text-violet-400",
+            bg: "bg-violet-500/10",
           },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08, duration: 0.4 }}
-            className="group relative bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-xl p-3.5 sm:p-5 overflow-hidden transition-all"
-            style={{ boxShadow: `0 4px 24px ${stat.shadow}` }}
-          >
-            <div
-              className="absolute top-4 right-4 w-10 h-10 rounded-xl flex items-center justify-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all"
-              style={{ background: stat.gradient }}
-            >
-              <stat.icon className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] block mb-2">
+        ].map((stat) => (
+          <div key={stat.label} className={`${stat.bg} rounded-xl p-3 sm:p-4`}>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 truncate">
               {stat.label}
-            </span>
-            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight leading-none">
+            </p>
+            <p
+              className={`text-base sm:text-lg font-black font-mono leading-none truncate ${stat.color}`}
+            >
               {stat.value}
-            </span>
-          </motion.div>
+            </p>
+          </div>
         ))}
       </div>
 
@@ -219,7 +204,7 @@ export default function History() {
                 const b = borrowers.find((x) => x.id === l.borrowerId);
                 return {
                   value: l.id,
-                  label: `${l.id} · ${b?.fullName || "Unknown"} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
+                  label: `${shortId(l.id)} · ${b?.fullName || "Unknown"} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
                 };
               }),
             ]}
@@ -277,8 +262,8 @@ export default function History() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="text-xl font-black font-mono text-slate-900 dark:text-white">
-                            {loan.id}
+                          <span className="text-base font-black font-mono text-slate-900 dark:text-white">
+                            {shortId(loan.id)}
                           </span>
                           {loan.collateralCode && (
                             <span

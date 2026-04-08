@@ -241,19 +241,28 @@ export function Layout() {
         </motion.div>
       </main>
 
-      {/* ─── Mobile Dock ─── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-2 pointer-events-none">
-        <nav className="flex items-center justify-around bg-white/75 dark:bg-slate-900/75 backdrop-blur-2xl border border-slate-200/60 dark:border-slate-700/50 p-1.5 rounded-2xl shadow-lg shadow-slate-900/10 dark:shadow-black/40 pointer-events-auto">
+      {/* ─── Mobile Dock — iOS liquid glass ─── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pointer-events-none">
+        <nav
+          className="flex items-center justify-around py-3 px-3 rounded-2xl pointer-events-auto"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(245,245,250,0.82) 0%, rgba(235,235,240,0.72) 100%)",
+            WebkitBackdropFilter: "blur(60px) saturate(200%) brightness(1.08)",
+            backdropFilter: "blur(60px) saturate(200%) brightness(1.08)",
+            boxShadow:
+              "0 4px 24px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.7) inset, 0 -0.5px 0 rgba(0,0,0,0.05) inset",
+            border: "0.5px solid rgba(255,255,255,0.5)",
+          }}
+        >
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
               className={({ isActive }) =>
                 cn(
-                  "relative flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all flex-1 min-w-0",
-                  isActive
-                    ? "text-sky-600 dark:text-sky-400"
-                    : "text-slate-400 dark:text-slate-500 active:text-slate-600",
+                  "relative flex items-center justify-center w-14 h-12 rounded-2xl transition-all",
+                  isActive ? "text-sky-600" : "text-slate-400 active:scale-95",
                 )
               }
             >
@@ -262,19 +271,15 @@ export function Layout() {
                   {isActive && (
                     <motion.div
                       layoutId="dock-pill"
-                      className="absolute inset-0 bg-sky-500/10 dark:bg-sky-500/15 rounded-xl"
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                      className="absolute inset-0 rounded-2xl"
+                      style={{
+                        background: "rgba(14,165,233,0.1)",
+                        boxShadow: "0 0.5px 0 rgba(255,255,255,0.4) inset",
+                      }}
+                      transition={{ type: "spring", stiffness: 400, damping: 28 }}
                     />
                   )}
-                  <item.icon
-                    className={cn(
-                      "w-5 h-5 relative z-10 transition-transform",
-                      isActive && "scale-110",
-                    )}
-                  />
-                  <span className="text-[9px] font-bold tracking-wider uppercase mt-0.5 relative z-10">
-                    {item.short}
-                  </span>
+                  <item.icon className={cn("w-6 h-6 relative z-10", isActive && "scale-110")} />
                 </>
               )}
             </NavLink>

@@ -13,7 +13,7 @@ const PrivacyContext = createContext<PrivacyContextValue>({
 });
 
 export function PrivacyProvider({ children }: { children: ReactNode }) {
-  const [masked, setMasked] = useState(() => localStorage.getItem("nk_privacy") === "true");
+  const [masked, setMasked] = useState(true);
 
   const toggleMask = () => {
     setMasked((prev) => {

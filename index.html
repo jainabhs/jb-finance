@@ -17,11 +17,11 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // SPA redirect from 404.html
-      (function() {
+      (function () {
         var q = window.location.search;
-        if (q && q.indexOf('?p=') === 0) {
+        if (q && q.indexOf("?p=") === 0) {
           var path = decodeURIComponent(q.slice(3));
-          window.history.replaceState(null, '', path);
+          window.history.replaceState(null, "", path);
         }
       })();
       if ("serviceWorker" in navigator) {

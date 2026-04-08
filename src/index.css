@@ -12,6 +12,13 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Prevent iOS zoom on input focus — inputs must be >= 16px */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
   body {
     @apply bg-slate-50 text-slate-700 antialiased selection:bg-sky-200
            dark:bg-slate-950 dark:text-slate-300 dark:selection:bg-sky-800;

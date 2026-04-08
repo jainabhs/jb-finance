@@ -12,6 +12,7 @@ import {
   Share2,
 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 import { motion, AnimatePresence } from "framer-motion";
 import { calculateCompoundInterest } from "../lib/interest";
 import { useMockData } from "../lib/MockContext";
@@ -20,6 +21,8 @@ import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { Select } from "../components/ui/Select";
 import { usePrivacy } from "../lib/PrivacyContext";
+import { shortId } from "../lib/utils";
+import { Download } from "lucide-react";
 
 export default function GenerateInterest() {
   const { loans, borrowers, addInterest, interests, globalBorrowerId, deleteInterest } =
@@ -141,38 +144,154 @@ export default function GenerateInterest() {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [showReceipt, setShowReceipt] = useState(false);
 
-  const handleShareReceipt = useCallback(async () => {
-    if (!loan || !borrower || loanHistory.length === 0) return;
-    setShowReceipt(true);
-    // Wait for render
-    await new Promise((r) => setTimeout(r, 100));
-    if (!receiptRef.current) return;
-    try {
-      const canvas = await html2canvas(receiptRef.current, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-      });
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `receipt-${loan.id}.png`, { type: "image/png" });
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: `Interest Receipt - ${loan.id}` });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `receipt-${loan.id}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-          toast.success("Receipt image saved!");
-        }
-      }, "image/png");
-    } catch {
-      toast.error("Could not generate receipt");
-    } finally {
-      setShowReceipt(false);
+  const generateReceiptFile = useCallback(async (): Promise<File | null> => {
+    if (!loan || !borrower || loanHistory.length === 0) return null;
+
+    if (loanHistory.length <= 3) {
+      // Image mode
+      setShowReceipt(true);
+      await new Promise((r) => setTimeout(r, 150));
+      if (!receiptRef.current) return null;
+      try {
+        const canvas = await html2canvas(receiptRef.current, {
+          scale: 2,
+          backgroundColor: "#ffffff",
+        });
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
+        if (!blob) return null;
+        return new File([blob], `receipt-${shortId(loan.id)}.png`, { type: "image/png" });
+      } finally {
+        setShowReceipt(false);
+      }
+    } else {
+      // PDF mode
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const pw = doc.internal.pageSize.getWidth();
+      const margin = 16;
+      let y = 20;
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pw, 44, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("JB FINANCE", margin, y);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text("INTEREST RECEIPT", margin, y + 6);
+      doc.setFontSize(9);
+      doc.setTextColor(56, 189, 248);
+      doc.text(format(new Date(), "dd MMM yyyy, hh:mm a"), pw - margin, y, { align: "right" });
+
+      y = 34;
+      doc.setTextColor(226, 232, 240);
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "bold");
+      doc.text(borrower.fullName, margin, y);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `${shortId(loan.id)}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo`,
+        margin,
+        y + 5,
+      );
+
+      y = 52;
+      doc.setFillColor(241, 245, 249);
+      doc.rect(margin, y, pw - margin * 2, 8, "F");
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.setFont("helvetica", "bold");
+      doc.text("#", margin + 3, y + 5.5);
+      doc.text("PERIOD", margin + 14, y + 5.5);
+      doc.text("AMOUNT", pw - margin - 3, y + 5.5, { align: "right" });
+      y += 10;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      loanHistory
+        .slice()
+        .reverse()
+        .forEach((h, idx) => {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+          if (idx % 2 === 0) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(margin, y - 3, pw - margin * 2, 8, "F");
+          }
+          doc.setTextColor(71, 85, 105);
+          doc.text(`${idx + 1}`, margin + 3, y + 2);
+          doc.text(
+            `${format(new Date(h.startDate), "dd MMM yy")} → ${format(new Date(h.endDate), "dd MMM yy")}`,
+            margin + 14,
+            y + 2,
+          );
+          doc.setTextColor(15, 23, 42);
+          doc.setFont("helvetica", "bold");
+          doc.text(`₹${h.amount.toLocaleString("en-IN")}`, pw - margin - 3, y + 2, {
+            align: "right",
+          });
+          doc.setFont("helvetica", "normal");
+          y += 8;
+        });
+
+      y += 4;
+      doc.setFillColor(15, 23, 42);
+      doc.roundedRect(margin, y, pw - margin * 2, 14, 3, 3, "F");
+      doc.setTextColor(148, 163, 184);
+      doc.setFontSize(7);
+      doc.text("TOTAL COLLECTED", margin + 5, y + 6);
+      doc.setTextColor(16, 185, 129);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text(`₹${totalCollectedInterest.toLocaleString("en-IN")}`, margin + 5, y + 12);
+      doc.setTextColor(148, 163, 184);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${loanHistory.length} ENTRIES`, pw - margin - 5, y + 10, { align: "right" });
+
+      const pdfBlob = doc.output("blob");
+      return new File([pdfBlob], `receipt-${shortId(loan.id)}.pdf`, { type: "application/pdf" });
     }
-  }, [loan, borrower, loanHistory]);
+  }, [loan, borrower, loanHistory, totalCollectedInterest]);
+
+  const handleShareReceipt = useCallback(async () => {
+    try {
+      const file = await generateReceiptFile();
+      if (!file) return;
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `Interest Receipt` });
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("File saved!");
+      }
+    } catch {
+      toast.error("Could not share");
+    }
+  }, [generateReceiptFile]);
+
+  const handleDownloadReceipt = useCallback(async () => {
+    try {
+      const file = await generateReceiptFile();
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${file.type.includes("pdf") ? "PDF" : "Image"} downloaded!`);
+    } catch {
+      toast.error("Could not download");
+    }
+  }, [generateReceiptFile]);
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -210,7 +329,7 @@ export default function GenerateInterest() {
                 onChange={(val) => setSelectedLoanId(val)}
                 options={filteredLoans.map((l) => ({
                   value: l.id,
-                  label: `${l.id} - ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
+                  label: `${shortId(l.id)} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
                 }))}
                 placeholder="Select Profile..."
                 disabled={filteredLoans.length === 0}
@@ -426,10 +545,10 @@ export default function GenerateInterest() {
                         })}
                       </div>
 
-                      <div className="pb-52 sm:pb-36" />
+                      <div className="pb-64 sm:pb-36" />
 
                       {/* Fixed Action Footer */}
-                      <div className="fixed bottom-20 md:bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700/60 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] md:safe-area-bottom">
+                      <div className="fixed bottom-24 md:bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700/60 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] md:safe-area-bottom">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
                           <AnimatePresence>
                             {selectedCalculation?.isCapitalized && (
@@ -504,12 +623,18 @@ export default function GenerateInterest() {
                 <div className="w-full flex flex-col relative">
                   {loanHistory.length > 0 ? (
                     <div className="space-y-4 pb-6 w-full">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
                         <button
                           onClick={() => void handleShareReceipt()}
                           className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-sky-300 dark:hover:border-sky-600/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
                         >
-                          <Share2 className="w-3.5 h-3.5" /> Share Receipt
+                          <Share2 className="w-3.5 h-3.5" /> Share
+                        </button>
+                        <button
+                          onClick={() => void handleDownloadReceipt()}
+                          className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-emerald-300 dark:hover:border-emerald-600/50 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Save
                         </button>
                       </div>
                       {loanHistory.map((h, idx) => (
