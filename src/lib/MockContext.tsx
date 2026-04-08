@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { useAuth } from "./AuthContext";
 
 export interface Borrower {
   id: string;
@@ -110,6 +111,7 @@ function interestFromRow(r: any): AppliedInterest {
 const MockContext = createContext<MockDataState | null>(null);
 
 export function MockProvider({ children }: { children: React.ReactNode }) {
+  const { session } = useAuth();
   const isSupabaseConnected = !!supabase;
 
   // If Supabase is connected, initialize with empty arrays and fetch, otherwise use localstorage
@@ -126,9 +128,9 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     () => localStorage.getItem("nk_global_borrower") || null,
   );
 
-  // Fetch initial data from Supabase
+  // Fetch data from Supabase when authenticated
   useEffect(() => {
-    if (isSupabaseConnected && supabase) {
+    if (isSupabaseConnected && supabase && session) {
       const db = supabase;
       const fetchData = async () => {
         const { data: b } = await db
@@ -178,7 +180,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
       };
       fetchData();
     }
-  }, [isSupabaseConnected]);
+  }, [isSupabaseConnected, session]);
 
   // Sync to local storage only if NOT using supabase
   useEffect(() => {
