@@ -45,13 +45,26 @@ export function Layout() {
       {/* ─── Header ─── */}
       <header className="sticky top-0 z-50 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-14 items-center justify-between gap-3">
-            {/* Logo */}
-            <div className="flex items-center gap-2.5 shrink-0">
+          {/* Mobile: Row 1 — branding centered */}
+          <div className="flex md:hidden h-12 items-center justify-center border-b border-slate-100 dark:border-slate-800/40">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-sm shadow-amber-500/20">
+                <IndianRupee className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">
+                JB Finance
+              </span>
+            </div>
+          </div>
+
+          {/* Mobile: Row 2 — controls / Desktop: single row */}
+          <div className="flex h-11 md:h-14 items-center gap-2">
+            {/* Desktop Logo — hidden on mobile */}
+            <div className="hidden md:flex items-center gap-2.5 shrink-0">
               <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-md shadow-amber-500/20">
                 <IndianRupee className="w-4 h-4 text-white" />
               </div>
-              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white hidden sm:block">
+              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">
                 JB Finance
               </span>
             </div>
@@ -94,8 +107,8 @@ export function Layout() {
               ))}
             </nav>
 
-            {/* Right controls */}
-            <div className="flex items-center gap-2">
+            {/* Controls — fills row on mobile, right-aligned on desktop */}
+            <div className="flex items-center gap-1.5 flex-1 md:flex-none">
               {/* Privacy toggle */}
               <button
                 onClick={toggleMask}
@@ -152,18 +165,18 @@ export function Layout() {
               )}
 
               {/* Borrower selector */}
-              <div className="relative">
+              <div className="relative flex-1 md:flex-none">
                 <button
                   onClick={() => setBorrowerOpen(!borrowerOpen)}
-                  className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-2.5 py-1.5 transition-all max-w-[160px] sm:max-w-[200px]"
+                  className="flex w-full items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-3 py-2 transition-all md:w-auto md:max-w-[200px]"
                 >
-                  <UserSquare2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
-                    {activeBorrower?.fullName || "All"}
+                  <UserSquare2 className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                    {activeBorrower?.fullName || "All Borrowers"}
                   </span>
                   <ChevronDown
                     className={cn(
-                      "w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0 transition-transform",
+                      "w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 ml-auto transition-transform",
                       borrowerOpen && "rotate-180",
                     )}
                   />
@@ -241,28 +254,19 @@ export function Layout() {
         </motion.div>
       </main>
 
-      {/* ─── Mobile Dock — iOS liquid glass ─── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pointer-events-none">
-        <nav
-          className="flex items-center justify-around py-3 px-3 rounded-2xl pointer-events-auto"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(245,245,250,0.82) 0%, rgba(235,235,240,0.72) 100%)",
-            WebkitBackdropFilter: "blur(60px) saturate(200%) brightness(1.08)",
-            backdropFilter: "blur(60px) saturate(200%) brightness(1.08)",
-            boxShadow:
-              "0 4px 24px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.7) inset, 0 -0.5px 0 rgba(0,0,0,0.05) inset",
-            border: "0.5px solid rgba(255,255,255,0.5)",
-          }}
-        >
+      {/* ─── Mobile Dock — Apple Liquid Glass ─── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-5 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pointer-events-none">
+        <nav className="dock-glass flex items-center justify-around py-1.5 px-1 rounded-[18px] pointer-events-auto">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
               className={({ isActive }) =>
                 cn(
-                  "relative flex items-center justify-center w-14 h-12 rounded-2xl transition-all",
-                  isActive ? "text-sky-600" : "text-slate-400 active:scale-95",
+                  "relative flex items-center justify-center w-13 h-10 rounded-xl transition-all",
+                  isActive
+                    ? "text-sky-500 dark:text-sky-400"
+                    : "text-slate-400 dark:text-slate-500 active:scale-90",
                 )
               }
             >
@@ -271,15 +275,13 @@ export function Layout() {
                   {isActive && (
                     <motion.div
                       layoutId="dock-pill"
-                      className="absolute inset-0 rounded-2xl"
-                      style={{
-                        background: "rgba(14,165,233,0.1)",
-                        boxShadow: "0 0.5px 0 rgba(255,255,255,0.4) inset",
-                      }}
+                      className="absolute inset-0 rounded-xl bg-sky-500/10 dark:bg-sky-400/10"
                       transition={{ type: "spring", stiffness: 400, damping: 28 }}
                     />
                   )}
-                  <item.icon className={cn("w-6 h-6 relative z-10", isActive && "scale-110")} />
+                  <item.icon
+                    className={cn("w-[21px] h-[21px] relative z-10", isActive && "scale-110")}
+                  />
                 </>
               )}
             </NavLink>

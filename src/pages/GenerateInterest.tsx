@@ -21,7 +21,6 @@ import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { Select } from "../components/ui/Select";
 import { usePrivacy } from "../lib/PrivacyContext";
-import { shortId } from "../lib/utils";
 import { Download } from "lucide-react";
 
 export default function GenerateInterest() {
@@ -159,7 +158,9 @@ export default function GenerateInterest() {
         });
         const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
         if (!blob) return null;
-        return new File([blob], `receipt-${shortId(loan.id)}.png`, { type: "image/png" });
+        return new File([blob], `receipt-${loan.collateralCode || "receipt"}.png`, {
+          type: "image/png",
+        });
       } finally {
         setShowReceipt(false);
       }
@@ -191,7 +192,7 @@ export default function GenerateInterest() {
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
       doc.text(
-        `${shortId(loan.id)}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo`,
+        `${loan.collateralCode || "—"}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo`,
         margin,
         y + 5,
       );
@@ -253,7 +254,9 @@ export default function GenerateInterest() {
       doc.text(`${loanHistory.length} ENTRIES`, pw - margin - 5, y + 10, { align: "right" });
 
       const pdfBlob = doc.output("blob");
-      return new File([pdfBlob], `receipt-${shortId(loan.id)}.pdf`, { type: "application/pdf" });
+      return new File([pdfBlob], `receipt-${loan.collateralCode || "receipt"}.pdf`, {
+        type: "application/pdf",
+      });
     }
   }, [loan, borrower, loanHistory, totalCollectedInterest]);
 
@@ -329,7 +332,7 @@ export default function GenerateInterest() {
                 onChange={(val) => setSelectedLoanId(val)}
                 options={filteredLoans.map((l) => ({
                   value: l.id,
-                  label: `${shortId(l.id)} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
+                  label: `${l.collateralCode || "—"} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
                 }))}
                 placeholder="Select Profile..."
                 disabled={filteredLoans.length === 0}
@@ -903,7 +906,7 @@ export default function GenerateInterest() {
               {/* Info grid */}
               <div style={{ display: "flex", gap: 12 }}>
                 {[
-                  { label: "Loan ID", value: loan.id, mono: true },
+                  { label: "Collateral", value: loan.collateralCode || "—", mono: true },
                   {
                     label: "Principal",
                     value: `₹${loan.principal.toLocaleString("en-IN")}`,

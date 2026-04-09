@@ -19,7 +19,6 @@ import { format } from "date-fns";
 import { Select } from "../components/ui/Select";
 import toast from "react-hot-toast";
 import { usePrivacy } from "../lib/PrivacyContext";
-import { shortId } from "../lib/utils";
 
 export default function History() {
   const { loans, borrowers, interests, globalBorrowerId, deleteInterest } = useMockData();
@@ -110,12 +109,12 @@ export default function History() {
 
   const exportCSV = () => {
     if (allHistory.length === 0) return;
-    const rows = [["Loan ID", "Borrower", "Period Start", "Period End", "Amount", "Logged"]];
+    const rows = [["Collateral ID", "Borrower", "Period Start", "Period End", "Amount", "Logged"]];
     for (const h of allHistory) {
       const loan = loans.find((l) => l.id === h.loanId);
       const borrower = loan ? borrowers.find((b) => b.id === loan.borrowerId) : null;
       rows.push([
-        h.loanId,
+        loan?.collateralCode || "—",
         borrower?.fullName || "Unknown",
         format(new Date(h.startDate), "yyyy-MM-dd"),
         format(new Date(h.endDate), "yyyy-MM-dd"),
@@ -204,7 +203,7 @@ export default function History() {
                 const b = borrowers.find((x) => x.id === l.borrowerId);
                 return {
                   value: l.id,
-                  label: `${shortId(l.id)} · ${b?.fullName || "Unknown"} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
+                  label: `${l.collateralCode || "—"} · ${b?.fullName || "Unknown"} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
                 };
               }),
             ]}
@@ -263,21 +262,8 @@ export default function History() {
                       <div>
                         <div className="flex items-center gap-2.5 flex-wrap">
                           <span className="text-base font-black font-mono text-slate-900 dark:text-white">
-                            {shortId(loan.id)}
+                            {loan.collateralCode || "—"}
                           </span>
-                          {loan.collateralCode && (
-                            <span
-                              className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md tracking-wider"
-                              style={{
-                                background:
-                                  "linear-gradient(135deg, rgba(234,179,8,0.1), rgba(245,158,11,0.1))",
-                                color: "#b45309",
-                                border: "1px solid rgba(234,179,8,0.25)",
-                              }}
-                            >
-                              ITEM: {loan.collateralCode}
-                            </span>
-                          )}
                           {isClosed && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 tracking-wider">
                               CLOSED
@@ -410,21 +396,8 @@ export default function History() {
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2.5 flex-wrap">
                               <span className="text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
-                                {loanId}
+                                {loan?.collateralCode || "—"}
                               </span>
-                              {loan?.collateralCode && (
-                                <span
-                                  className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded tracking-wider"
-                                  style={{
-                                    background:
-                                      "linear-gradient(135deg, rgba(234,179,8,0.1), rgba(245,158,11,0.1))",
-                                    color: "#b45309",
-                                    border: "1px solid rgba(234,179,8,0.25)",
-                                  }}
-                                >
-                                  ITEM: {loan.collateralCode}
-                                </span>
-                              )}
                               {isClosed && (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 tracking-wider">
                                   CLOSED

@@ -27,7 +27,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Select } from "../components/ui/Select";
 import { format, differenceInMonths } from "date-fns";
-import { shortId } from "../lib/utils";
+
 import { usePrivacy } from "../lib/PrivacyContext";
 
 export default function ManageLoans() {
@@ -82,7 +82,9 @@ export default function ManageLoans() {
           });
           const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
           if (!blob) return null;
-          return new File([blob], `pending-${loan.id}.png`, { type: "image/png" });
+          return new File([blob], `pending-${loan.collateralCode || "statement"}.png`, {
+            type: "image/png",
+          });
         } finally {
           setShareTarget(null);
         }
@@ -116,7 +118,7 @@ export default function ManageLoans() {
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
         doc.text(
-          `${loan.id}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo  ·  ${loan.collateralCode || "—"}`,
+          `${loan.collateralCode || "—"}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo`,
           margin,
           y + 5,
         );
@@ -197,7 +199,9 @@ export default function ManageLoans() {
 
         // Return as file
         const pdfBlob = doc.output("blob");
-        return new File([pdfBlob], `pending-${loan.id}.pdf`, { type: "application/pdf" });
+        return new File([pdfBlob], `pending-${loan.collateralCode || "statement"}.pdf`, {
+          type: "application/pdf",
+        });
       }
     },
     [borrowers, interests],
@@ -262,7 +266,9 @@ export default function ManageLoans() {
         });
         const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
         if (!blob) return;
-        const file = new File([blob], `loan-${loan.id}.png`, { type: "image/png" });
+        const file = new File([blob], `loan-${loan.collateralCode || "ticket"}.png`, {
+          type: "image/png",
+        });
         if (navigator.share && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: `Loan - ${loan.id}` });
         } else {
@@ -301,7 +307,7 @@ export default function ManageLoans() {
     const prefix = `JB-${typePrefix[type] || "OTH"}-${input}`;
     const existing = loans.filter((l) => l.collateralCode.startsWith(prefix));
     const nextNum = existing.length + 1;
-    return `${prefix}-${String(nextNum).padStart(3, "0")}`;
+    return `${prefix}-${nextNum}`;
   };
 
   const handleAdd = (e: React.FormEvent) => {
@@ -510,7 +516,7 @@ export default function ManageLoans() {
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-slate-400 dark:text-slate-400">
-                        Loan ID
+                        Collateral ID
                       </span>
                       {overdueMonths > 0 && (
                         <span
@@ -523,17 +529,10 @@ export default function ManageLoans() {
                     <span
                       className={`text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white leading-none transition-colors ${!isClosed ? "group-hover:text-blue-600 dark:group-hover:text-sky-400" : ""}`}
                     >
-                      {shortId(l.id)}
+                      {l.collateralCode || "—"}
                     </span>
                   </div>
-                  {!isClosed && (
-                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
-                      {getCollateralIcon(l.collateralType)}
-                      <span className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 font-mono">
-                        {l.collateralCode}
-                      </span>
-                    </div>
-                  )}
+                  {getCollateralIcon(l.collateralType)}
                 </div>
 
                 <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 rounded-xl p-4">
@@ -802,7 +801,7 @@ export default function ManageLoans() {
                         </div>
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 ml-1 font-mono">
                           Full code: JB-{typePrefix[newL.collateralType] || "OTH"}-
-                          {newL.collateralCode || "..."}-###
+                          {newL.collateralCode || "..."}-#
                         </p>
                       </div>
                       <div>
@@ -887,7 +886,7 @@ export default function ManageLoans() {
                       Close Loan
                     </h3>
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-mono tracking-wider mt-0.5">
-                      {shortId(closureTarget.id)} —{" "}
+                      {closureTarget.collateralCode || "—"} —{" "}
                       {borrowers.find((b) => b.id === closureTarget.borrowerId)?.fullName}
                     </p>
                   </div>
@@ -1044,7 +1043,7 @@ export default function ManageLoans() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-base font-black font-mono text-slate-900 dark:text-white">
-                            {shortId(quickView.id)}
+                            {quickView.collateralCode || "—"}
                           </span>
                           {qClosed && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -1063,14 +1062,7 @@ export default function ManageLoans() {
                           {qb?.fullName || "Unknown"}
                         </p>
                       </div>
-                      {quickView.collateralCode && (
-                        <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5">
-                          {getCollateralIcon(quickView.collateralType)}
-                          <span className="text-[10px] font-bold font-mono text-slate-600 dark:text-slate-300 uppercase">
-                            {quickView.collateralCode}
-                          </span>
-                        </div>
-                      )}
+                      {getCollateralIcon(quickView.collateralType)}
                     </div>
 
                     {/* Key stats */}
@@ -1263,7 +1255,7 @@ export default function ManageLoans() {
                 <p className="text-slate-500 dark:text-slate-400 text-sm text-center leading-relaxed mb-3">
                   This will permanently delete{" "}
                   <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
-                    {shortId(deleteTarget.id)}
+                    {deleteTarget.collateralCode || "—"}
                   </span>{" "}
                   and all its interest records. This action cannot be undone.
                 </p>
@@ -1415,7 +1407,7 @@ export default function ManageLoans() {
                   {/* Loan details */}
                   <div style={{ display: "flex", gap: 10 }}>
                     {[
-                      { label: "Loan ID", value: shareTarget.id },
+                      { label: "Collateral", value: shareTarget.collateralCode || "—" },
                       {
                         label: "Principal",
                         value: `₹${shareTarget.principal.toLocaleString("en-IN")}`,
@@ -1783,7 +1775,7 @@ export default function ManageLoans() {
 
                   {/* Receipt rows */}
                   <div style={{ padding: "4px 24px 12px" }}>
-                    {row("Ref. No.", loanTicketTarget.id)}
+                    {row("Ref. No.", loanTicketTarget.collateralCode || "—")}
                     {row("Amount", `₹${loanTicketTarget.principal.toLocaleString("en-IN")}`)}
                     {row("Interest", `${loanTicketTarget.rate}% per month`)}
                     {row(

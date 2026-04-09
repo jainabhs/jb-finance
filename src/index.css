@@ -64,6 +64,33 @@
     box-shadow: 0 6px 28px rgba(56, 189, 248, 0.3);
   }
 
+  /* Apple Liquid Glass — light mode */
+  .dock-glass {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(245, 245, 248, 0.8) 100%
+    );
+    -webkit-backdrop-filter: blur(50px) saturate(180%);
+    backdrop-filter: blur(50px) saturate(180%);
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.1),
+      0 1px 3px rgba(0, 0, 0, 0.06),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.04);
+    border: 0.5px solid rgba(0, 0, 0, 0.06);
+  }
+
+  /* Apple Liquid Glass — dark mode */
+  :where(.dark, .dark *) .dock-glass {
+    background: linear-gradient(180deg, rgba(30, 32, 40, 0.7) 0%, rgba(22, 24, 30, 0.6) 100%);
+    box-shadow:
+      0 2px 20px rgba(0, 0, 0, 0.3),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.2);
+    border: 0.5px solid rgba(255, 255, 255, 0.06);
+  }
+
   .accent-glow {
     box-shadow:
       0 0 60px rgba(56, 189, 248, 0.06),
