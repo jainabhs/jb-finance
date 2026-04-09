@@ -34,6 +34,11 @@ export default function ManageLoans() {
   const { loans, borrowers, addLoan, globalBorrowerId, interests, closeLoan, deleteLoan } =
     useMockData();
   const { m } = usePrivacy();
+
+  // Format number with Indian commas as you type
+  const fmtNum = (n: number) => (n ? n.toLocaleString("en-IN") : "");
+  const parseNum = (s: string) => Number(s.replace(/,/g, "")) || 0;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"active" | "closed">("active");
@@ -743,10 +748,13 @@ export default function ManageLoans() {
                         </label>
                         <input
                           required
-                          type="number"
-                          min="0"
-                          value={newL.principal}
-                          onChange={(e) => setNewL({ ...newL, principal: Number(e.target.value) })}
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g. 1,50,000"
+                          value={fmtNum(newL.principal)}
+                          onChange={(e) =>
+                            setNewL({ ...newL, principal: parseNum(e.target.value) })
+                          }
                           className={inputCls}
                         />
                       </div>
@@ -756,10 +764,11 @@ export default function ManageLoans() {
                         </label>
                         <input
                           required
-                          type="number"
-                          step="0.1"
-                          value={newL.rate}
-                          onChange={(e) => setNewL({ ...newL, rate: Number(e.target.value) })}
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="e.g. 2"
+                          value={newL.rate || ""}
+                          onChange={(e) => setNewL({ ...newL, rate: Number(e.target.value) || 0 })}
                           className={`${inputCls} text-sky-600 dark:text-sky-400`}
                         />
                       </div>
@@ -822,10 +831,12 @@ export default function ManageLoans() {
                         </label>
                         <input
                           required
-                          type="number"
-                          value={newL.thresholdMonths}
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g. 12"
+                          value={newL.thresholdMonths || ""}
                           onChange={(e) =>
-                            setNewL({ ...newL, thresholdMonths: Number(e.target.value) })
+                            setNewL({ ...newL, thresholdMonths: Number(e.target.value) || 0 })
                           }
                           className={`${inputCls} text-red-600 dark:text-red-400`}
                         />
