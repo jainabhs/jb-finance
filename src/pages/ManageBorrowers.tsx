@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, Plus, Phone, Mail, ShieldCheck, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMockData } from "../lib/MockContext";
 import { usePrivacy } from "../lib/PrivacyContext";
 import { calculateCompoundInterest } from "../lib/interest";
+import { lockScroll } from "../lib/utils";
 import toast from "react-hot-toast";
 
 export default function ManageBorrowers() {
@@ -13,6 +14,11 @@ export default function ManageBorrowers() {
   const [showModal, setShowModal] = useState(false);
   const [editBId, setEditBId] = useState<string | null>(null);
   const [newB, setNewB] = useState({ fullName: "", phone: "", email: "" });
+
+  useEffect(() => {
+    lockScroll(showModal);
+    return () => lockScroll(false);
+  }, [showModal]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +51,7 @@ export default function ManageBorrowers() {
   );
 
   const inputCls =
-    "block w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl py-3 px-4 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500";
+    "block w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg py-2.5 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500";
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -221,7 +227,6 @@ export default function ManageBorrowers() {
               className="relative w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
             >
               <div className="p-5 sm:p-6 overflow-y-auto flex-1">
-                <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 sm:hidden" />
                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-5 tracking-tight">
                   {editBId ? "Edit Borrower" : "Add Borrower"}
                 </h3>

@@ -26,6 +26,14 @@
            dark:bg-slate-950 dark:text-slate-300 dark:selection:bg-sky-800;
   }
 
+  /* Lock body scroll when modal is open */
+  body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    touch-action: none;
+  }
+
   /* Desktop: thin scrollbar */
   @media (min-width: 768px) {
     ::-webkit-scrollbar {

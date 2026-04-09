@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -27,6 +27,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Select } from "../components/ui/Select";
 import { format, differenceInMonths } from "date-fns";
+import { lockScroll } from "../lib/utils";
 
 import { usePrivacy } from "../lib/PrivacyContext";
 
@@ -297,6 +298,13 @@ export default function ManageLoans() {
   const [quickView, setQuickView] = useState<Loan | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Loan | null>(null);
 
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    const open = !!(showModal || closureTarget || quickView || deleteTarget);
+    lockScroll(open);
+    return () => lockScroll(false);
+  }, [showModal, closureTarget, quickView, deleteTarget]);
+
   const handleOpenModal = () => {
     setNewL((prev) => ({ ...prev, borrowerId: globalBorrowerId || "" }));
     setShowModal(true);
@@ -409,9 +417,9 @@ export default function ManageLoans() {
   };
 
   const inputCls =
-    "block w-full bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl py-3.5 px-4 font-mono text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all";
+    "block w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg py-2.5 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all";
   const selectCls =
-    "w-full bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl py-3.5 px-4 text-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30";
+    "w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg py-2.5 px-3 text-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30";
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -688,7 +696,6 @@ export default function ManageLoans() {
               className="relative w-full max-w-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
             >
               <div className="p-5 sm:p-6 overflow-y-auto flex-1">
-                <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 sm:hidden" />
                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-5 tracking-tight flex items-center gap-3">
                   <span className="w-2.5 h-2.5 bg-sky-500 rounded-full animate-pulse" /> Add New
                   Loan
@@ -792,26 +799,20 @@ export default function ManageLoans() {
                         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
                           Collateral ID
                         </label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-400 dark:text-slate-500 pointer-events-none">
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 bg-slate-100 dark:bg-slate-700 border border-r-0 border-slate-200 dark:border-slate-700 rounded-l-lg text-xs font-mono font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             JB-{typePrefix[newL.collateralType] || "OTH"}-
                           </span>
                           <input
                             required
                             type="text"
+                            inputMode="numeric"
                             value={newL.collateralCode}
                             onChange={(e) => setNewL({ ...newL, collateralCode: e.target.value })}
-                            placeholder="e.g. 9015"
-                            className={`${inputCls} placeholder:text-slate-400 dark:placeholder:text-slate-500`}
-                            style={{
-                              paddingLeft: `${(typePrefix[newL.collateralType]?.length || 3) * 8 + 44}px`,
-                            }}
+                            placeholder="9015"
+                            className={`${inputCls} rounded-l-none placeholder:text-slate-400 dark:placeholder:text-slate-500`}
                           />
                         </div>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 ml-1 font-mono">
-                          Full code: JB-{typePrefix[newL.collateralType] || "OTH"}-
-                          {newL.collateralCode || "..."}-#
-                        </p>
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
@@ -885,8 +886,6 @@ export default function ManageLoans() {
               className="relative w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
             >
               <div className="p-5 sm:p-6 overflow-y-auto flex-1">
-                <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 sm:hidden" />
-
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 flex items-center justify-center">
@@ -1047,8 +1046,6 @@ export default function ManageLoans() {
                   className="relative w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
                 >
                   <div className="p-5 sm:p-6 overflow-y-auto flex-1">
-                    <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-4 sm:hidden" />
-
                     {/* Header */}
                     <div className="flex items-center justify-between mb-4">
                       <div>
@@ -1256,7 +1253,6 @@ export default function ManageLoans() {
               className="relative w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
             >
               <div className="p-5 sm:p-6 flex-1">
-                <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 sm:hidden" />
                 <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/40 mx-auto">
                   <Trash2 className="w-7 h-7 text-red-500" />
                 </div>

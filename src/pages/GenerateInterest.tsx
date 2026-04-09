@@ -21,6 +21,7 @@ import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { Select } from "../components/ui/Select";
 import { usePrivacy } from "../lib/PrivacyContext";
+import { lockScroll } from "../lib/utils";
 import { Download } from "lucide-react";
 
 export default function GenerateInterest() {
@@ -36,6 +37,11 @@ export default function GenerateInterest() {
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [activeTab, setActiveTab] = useState<"draft" | "history">("draft");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    lockScroll(!!deleteTargetId);
+    return () => lockScroll(false);
+  }, [deleteTargetId]);
 
   // When linked directly via ?loanId=, derive the borrower from the loan
   const linkedLoan = initialLoanId ? loans.find((l) => l.id === initialLoanId) : null;
@@ -751,7 +757,6 @@ export default function GenerateInterest() {
               className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
             >
               <div className="p-5 sm:p-6 flex-1">
-                <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 sm:hidden" />
                 <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/40 mx-auto">
                   <AlertOctagon className="w-7 h-7 text-red-500" />
                 </div>

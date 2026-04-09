@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   History as HistoryIcon,
   Search,
@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { Select } from "../components/ui/Select";
 import toast from "react-hot-toast";
 import { usePrivacy } from "../lib/PrivacyContext";
+import { lockScroll } from "../lib/utils";
 
 export default function History() {
   const { loans, borrowers, interests, globalBorrowerId, deleteInterest } = useMockData();
@@ -29,6 +30,11 @@ export default function History() {
   const [selectedLoanId, setSelectedLoanId] = useState<string>(initialLoanId);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    lockScroll(!!deleteTargetId);
+    return () => lockScroll(false);
+  }, [deleteTargetId]);
   const [expandedLoans, setExpandedLoans] = useState<Set<string>>(new Set());
 
   // When linked directly via ?loanId=, derive the borrower from the loan
@@ -553,7 +559,6 @@ export default function History() {
               className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
             >
               <div className="p-5 sm:p-6 flex-1">
-                <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 sm:hidden" />
                 <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/40 mx-auto">
                   <AlertOctagon className="w-7 h-7 text-red-500" />
                 </div>
