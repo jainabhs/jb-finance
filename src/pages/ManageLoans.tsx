@@ -17,6 +17,7 @@ import {
   Download,
   Ticket,
   Trash2,
+  Edit3,
 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
@@ -32,8 +33,16 @@ import { lockScroll } from "../lib/utils";
 import { usePrivacy } from "../lib/PrivacyContext";
 
 export default function ManageLoans() {
-  const { loans, borrowers, addLoan, globalBorrowerId, interests, closeLoan, deleteLoan } =
-    useMockData();
+  const {
+    loans,
+    borrowers,
+    addLoan,
+    globalBorrowerId,
+    interests,
+    closeLoan,
+    updateLoan,
+    deleteLoan,
+  } = useMockData();
   const { m } = usePrivacy();
 
   // Format number with Indian commas as you type
@@ -297,13 +306,44 @@ export default function ManageLoans() {
 
   const [quickView, setQuickView] = useState<Loan | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Loan | null>(null);
+  const [editTarget, setEditTarget] = useState<Loan | null>(null);
+  const [editForm, setEditForm] = useState({
+    principal: 0,
+    rate: 0,
+    collateralType: "Gold",
+    collateralCode: "",
+    startDate: "",
+    thresholdMonths: 12,
+  });
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const open = !!(showModal || closureTarget || quickView || deleteTarget);
+    const open = !!(showModal || closureTarget || quickView || deleteTarget || editTarget);
     lockScroll(open);
     return () => lockScroll(false);
-  }, [showModal, closureTarget, quickView, deleteTarget]);
+  }, [showModal, closureTarget, quickView, deleteTarget, editTarget]);
+
+  const openEditModal = (loan: Loan) => {
+    setEditForm({
+      principal: loan.principal,
+      rate: loan.rate,
+      collateralType: loan.collateralType,
+      collateralCode: loan.collateralCode,
+      startDate: loan.startDate,
+      thresholdMonths: loan.thresholdMonths,
+    });
+    setEditTarget(loan);
+    setQuickView(null);
+  };
+
+  const handleEditSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    const { collateralType: _ct, collateralCode: _cc, ...editable } = editForm;
+    updateLoan(editTarget.id, editable);
+    setEditTarget(null);
+    toast.success("Loan updated!");
+  };
 
   const handleOpenModal = () => {
     setNewL((prev) => ({ ...prev, borrowerId: globalBorrowerId || "" }));
@@ -1049,10 +1089,16 @@ export default function ManageLoans() {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                             {quickView.collateralCode || "—"}
                           </span>
+                          <button
+                            onClick={() => openEditModal(quickView)}
+                            className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-md hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-3 h-3" /> Edit
+                          </button>
                           {qClosed && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               Closed
@@ -1232,6 +1278,122 @@ export default function ManageLoans() {
               </div>
             );
           })()}
+      </AnimatePresence>
+
+      {/* Edit loan modal */}
+      <AnimatePresence>
+        {editTarget && (
+          <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center items-center sm:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+              onClick={() => setEditTarget(null)}
+            />
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 28, stiffness: 220 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+            >
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 tracking-tight">
+                  Edit Loan — {editTarget.collateralCode || "—"}
+                </h3>
+                <form id="edit-loan-form" onSubmit={handleEditSave} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                        Principal (₹)
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="1,50,000"
+                        value={fmtNum(editForm.principal)}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, principal: parseNum(e.target.value) })
+                        }
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                        Rate (%/mo)
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="2"
+                        value={editForm.rate || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, rate: Number(e.target.value) || 0 })
+                        }
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                        Collateral
+                      </label>
+                      <div className="bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-500 dark:text-slate-400 font-mono">
+                        {editForm.collateralCode || "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                        Start Date
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        value={editForm.startDate}
+                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                        Threshold (mo)
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="12"
+                        value={editForm.thresholdMonths || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, thresholdMonths: Number(e.target.value) || 0 })
+                        }
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div className="border-t border-slate-100 dark:border-slate-700/50 flex shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditTarget(null)}
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="edit-loan-form"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl"
+                >
+                  Save
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
       {/* Delete loan confirmation */}

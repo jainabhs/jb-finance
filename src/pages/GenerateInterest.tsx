@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
-  Calendar,
   Save,
   AlertOctagon,
   Terminal,
@@ -303,7 +302,7 @@ export default function GenerateInterest() {
   }, [generateReceiptFile]);
 
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className="space-y-4 sm:space-y-5 overflow-hidden">
       <div>
         <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
           Interest Calculator
@@ -328,7 +327,7 @@ export default function GenerateInterest() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 text-center md:text-left">
                 1. Select Facility for {globalBorrower?.fullName.split(" ")[0]}
@@ -347,24 +346,19 @@ export default function GenerateInterest() {
                     className={`h-4 w-4 ${filteredLoans.length === 0 ? "text-slate-300 dark:text-slate-600" : "text-sky-600 dark:text-sky-400"}`}
                   />
                 }
-                buttonClassName={`w-full bg-slate-50 dark:bg-slate-800/50 border rounded-xl py-3.5 pl-4 pr-5 text-sm font-semibold focus:ring-2 transition-all font-mono ${filteredLoans.length === 0 ? "border-red-200 dark:border-red-800/40 text-slate-400 dark:text-slate-500" : "border-gray-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-sky-100 dark:focus:ring-sky-900/30"}`}
+                buttonClassName={`w-full bg-slate-50 dark:bg-slate-800/50 border rounded-lg py-2.5 px-3 text-sm font-semibold focus:ring-2 transition-all ${filteredLoans.length === 0 ? "border-red-200 dark:border-red-800/40 text-slate-400 dark:text-slate-500" : "border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-sky-100 dark:focus:ring-sky-900/30"}`}
               />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 text-center md:text-left flex items-center lg:justify-start justify-center gap-2">
                 2. Calculate Up To
               </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                  <Calendar className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                </div>
-                <input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                  className="block w-full bg-slate-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl py-3.5 pl-11 pr-4 text-sm font-semibold font-mono outline-none focus:border-sky-500 dark:focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all"
-                />
-              </div>
+              <input
+                type="date"
+                value={targetDate}
+                onChange={(e) => setTargetDate(e.target.value)}
+                className="block w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg py-2.5 px-3 text-sm outline-none focus:border-sky-500 dark:focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all"
+              />
             </div>
           </div>
         )}
@@ -376,48 +370,45 @@ export default function GenerateInterest() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-2.5"
+            className="grid grid-cols-2 md:grid-cols-4 gap-2"
           >
-            <div className="bg-white dark:bg-slate-800/80 border border-gray-200/80 dark:border-slate-700/60 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden transition-all hover:border-sky-200 dark:hover:border-sky-700/50 hover:shadow-md">
-              <div className="absolute -right-4 -top-4 w-16 h-16 bg-sky-50 dark:bg-sky-900/20 rounded-full blur-xl opacity-60 pointer-events-none" />
-              <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest mb-1 relative z-10">
-                Principal Base
-              </span>
-              <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono leading-none relative z-10">
-                {m(loan.principal)}
-              </span>
-            </div>
-            <div className="bg-white dark:bg-slate-800/80 border border-gray-200/80 dark:border-slate-700/60 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden transition-all hover:border-sky-200 dark:hover:border-sky-700/50 hover:shadow-md">
-              <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest mb-1 relative z-10">
-                Rate & Paid Up To
-              </span>
-              <div className="flex items-center gap-2 relative z-10">
-                <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono leading-none">
-                  {loan.rate}%
-                </span>
-                <span className="text-xs bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 font-mono px-2 py-0.5 rounded leading-none border border-sky-200 dark:border-sky-800/50">
-                  {format(new Date(loan.lastPaymentDate), "yyyy-MM")}
-                </span>
+            {[
+              {
+                label: "Principal",
+                value: m(loan.principal),
+                color: "text-sky-600 dark:text-sky-400",
+                bg: "bg-sky-500/10",
+              },
+              {
+                label: "Rate · Paid",
+                value: `${loan.rate}% · ${format(new Date(loan.lastPaymentDate), "MMM yy")}`,
+                color: "text-sky-600 dark:text-sky-400",
+                bg: "bg-sky-500/10",
+              },
+              {
+                label: "Yield",
+                value: m(totalCollectedInterest),
+                color: "text-emerald-600 dark:text-emerald-400",
+                bg: "bg-emerald-500/10",
+              },
+              {
+                label: "Unpaid",
+                value: m(currentUnpaidInterest),
+                color: "text-amber-600 dark:text-amber-400",
+                bg: "bg-amber-500/10",
+              },
+            ].map((s) => (
+              <div key={s.label} className={`${s.bg} rounded-xl p-3`}>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 truncate">
+                  {s.label}
+                </p>
+                <p
+                  className={`text-sm sm:text-base font-black font-mono leading-none truncate ${s.color}`}
+                >
+                  {s.value}
+                </p>
               </div>
-            </div>
-            <div className="bg-white dark:bg-slate-800/80 border border-gray-200/80 dark:border-slate-700/60 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden transition-all hover:border-emerald-200 dark:hover:border-emerald-700/50 hover:shadow-md">
-              <div className="absolute -right-4 -top-4 w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full blur-xl opacity-60 pointer-events-none" />
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1 relative z-10">
-                Total Yield
-              </span>
-              <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono leading-none relative z-10">
-                {m(totalCollectedInterest)}
-              </span>
-            </div>
-            <div className="bg-white dark:bg-slate-800/80 border border-amber-100/80 dark:border-amber-800/40 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden transition-all hover:border-amber-200 dark:hover:border-amber-700/50 hover:shadow-md">
-              <div className="absolute -right-4 -top-4 w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-full blur-xl opacity-60 pointer-events-none" />
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1 relative z-10">
-                Unpaid Today
-              </span>
-              <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono leading-none relative z-10">
-                {m(currentUnpaidInterest)}
-              </span>
-            </div>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>

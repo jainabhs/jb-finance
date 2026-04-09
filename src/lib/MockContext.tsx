@@ -54,6 +54,15 @@ interface MockDataState {
   }) => Promise<void> | void;
   deleteInterest: (id: string) => Promise<void> | void;
   closeLoan: (id: string, closedDate: string, note?: string) => Promise<void> | void;
+  updateLoan: (
+    id: string,
+    updates: Partial<
+      Pick<
+        Loan,
+        "principal" | "rate" | "collateralType" | "collateralCode" | "startDate" | "thresholdMonths"
+      >
+    >,
+  ) => Promise<void> | void;
   deleteLoan: (id: string) => Promise<void> | void;
   clearWorkspace: () => Promise<void> | void;
   globalBorrowerId: string | null;
@@ -406,6 +415,42 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const updateLoan = async (
+    id: string,
+    updates: Partial<
+      Pick<
+        Loan,
+        "principal" | "rate" | "collateralType" | "collateralCode" | "startDate" | "thresholdMonths"
+      >
+    >,
+  ) => {
+    if (isSupabaseConnected && supabase) {
+      const row: Record<string, unknown> = {};
+      if (updates.principal !== undefined) row.principal_amount = updates.principal;
+      if (updates.rate !== undefined) row.interest_rate_monthly = updates.rate;
+      if (updates.startDate !== undefined) row.start_date = updates.startDate;
+      if (updates.thresholdMonths !== undefined)
+        row.compound_threshold_months = updates.thresholdMonths;
+      if (Object.keys(row).length > 0) {
+        const { error } = await supabase.from("loans").update(row).eq("id", id);
+        if (error) {
+          console.error("Supabase error", error);
+          return;
+        }
+      }
+      if (updates.collateralType !== undefined || updates.collateralCode !== undefined) {
+        const loan = loans.find((l) => l.id === id);
+        await supabase.from("collateral_items").delete().eq("loan_id", id);
+        await supabase.from("collateral_items").insert({
+          loan_id: id,
+          item_type: updates.collateralType ?? loan?.collateralType ?? "Other",
+          alphanumeric_code: updates.collateralCode ?? loan?.collateralCode ?? "",
+        });
+      }
+    }
+    setLoans((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+  };
+
   const deleteLoan = async (id: string) => {
     if (isSupabaseConnected && supabase) {
       await supabase.from("applied_interests").delete().eq("loan_id", id);
@@ -454,6 +499,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         addInterest,
         deleteInterest,
         closeLoan,
+        updateLoan,
         deleteLoan,
         clearWorkspace,
         globalBorrowerId,
