@@ -1,11 +1,8 @@
 import { useMemo } from "react";
 import {
   Wallet,
-  Activity,
   CheckCircle2,
   ArrowUpRight,
-  BookOpen,
-  Clock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -13,29 +10,12 @@ import { format } from "date-fns";
 import { useMockData } from "../lib/MockContext";
 import { usePrivacy } from "../lib/PrivacyContext";
 
-import { calculateCompoundInterest } from "../lib/interest";
 
 export default function Dashboard() {
   const { loans, borrowers, interests } = useMockData();
   const { m } = usePrivacy();
   const activeLoans = loans.filter((l) => l.status === "active");
   const totalPrincipal = activeLoans.reduce((s, l) => s + l.principal, 0);
-  const totalCollected = interests.reduce((s, i) => s + i.amount, 0);
-  const totalPending = useMemo(
-    () =>
-      activeLoans.reduce((s, l) => {
-        const start = new Date(l.lastPaymentDate);
-        const now = new Date();
-        if (now <= start) return s;
-        return (
-          s +
-          calculateCompoundInterest(l.principal, l.rate, start, now, Math.max(1, l.thresholdMonths))
-            .totalInterest
-        );
-      }, 0),
-    [activeLoans],
-  );
-
   const recentInterests = useMemo(
     () =>
       [...interests]
@@ -59,7 +39,6 @@ export default function Dashboard() {
     return [...map.values()].sort((a, b) => b.principal - a.principal).slice(0, 5);
   }, [activeLoans, borrowers, interests]);
 
-  const overallYield = totalPrincipal > 0 ? (totalCollected / totalPrincipal) * 100 : 0;
   const monthlyEarning = activeLoans.reduce((s, l) => s + (l.principal * l.rate / 100), 0);
   const effectiveRate = totalPrincipal > 0 ? (monthlyEarning / totalPrincipal) * 100 : 0;
 
@@ -238,7 +217,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl p-4 sm:p-5">
             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">Secured By</h3>
             <div className="space-y-2.5">
-              {collateralBreakdown.map(([type, { count, principal }]) => {
+              {collateralBreakdown.map(([type, { principal }]) => {
                 const pct = totalPrincipal > 0 ? (principal / totalPrincipal) * 100 : 0;
                 return (
                   <div key={type} className="flex items-center justify-between">

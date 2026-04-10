@@ -2,14 +2,12 @@ import { useState, useMemo, useEffect } from "react";
 import {
   History as HistoryIcon,
   Search,
-  CalendarDays,
   Wallet,
   Hash,
   Trash2,
   AlertOctagon,
   Lock,
   ChevronDown,
-  Clock,
   Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";

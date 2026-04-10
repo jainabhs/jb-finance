@@ -7,7 +7,6 @@ import {
   Home,
   Car,
   AlertOctagon,
-  Terminal,
   IndianRupee,
   UserSquare2,
   XCircle,

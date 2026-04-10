@@ -1,8 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
-  Save,
   AlertOctagon,
-  Terminal,
   IndianRupee,
   HandCoins,
   History,
@@ -545,7 +543,7 @@ export default function GenerateInterest() {
                           </div>
                         </div>
                       </div>
-                      {loanHistory.map((h, idx) => (
+                      {loanHistory.map((h) => (
                         <div
                           key={h.id}
                           className="p-3 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-slate-700/40 bg-white dark:bg-slate-800/40 transition-all"
