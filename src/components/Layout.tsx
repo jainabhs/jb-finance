@@ -45,22 +45,144 @@ export function Layout() {
       {/* ─── Header ─── */}
       <header className="sticky top-0 z-50 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Mobile: Row 1 — branding centered */}
-          <div className="flex lg:hidden h-12 items-center justify-center border-b border-slate-100 dark:border-slate-800/40">
+          {/* Mobile/Tablet: Row 1 — branding left, controls right */}
+          <div className="flex lg:hidden h-12 items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-sm shadow-amber-500/20">
-                <IndianRupee className="w-4 h-4 text-white" />
+              <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-sm shadow-amber-500/20">
+                <IndianRupee className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">
+              <span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">
                 JB Finance
               </span>
             </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleMask}
+                className={cn(
+                  "w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border transition-all",
+                  masked
+                    ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400",
+                )}
+                title={masked ? "Show amounts" : "Hide amounts"}
+              >
+                {masked ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={toggleTheme}
+                className="h-8 shrink-0 flex items-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5 w-16 relative transition-all"
+              >
+                {/* Inactive icon on the track */}
+                {theme === "light" ? (
+                  <Moon className="absolute right-2.5 w-3 h-3 text-sky-400" />
+                ) : (
+                  <Sun className="absolute left-2.5 w-3 h-3 text-amber-400" />
+                )}
+                {/* Knob with active icon */}
+                <motion.div
+                  className="w-7 h-7 rounded-full bg-white dark:bg-slate-600 shadow-sm relative z-10 shrink-0 flex items-center justify-center"
+                  animate={{ x: theme === "light" ? 0 : 28 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                >
+                  {theme === "light" ? (
+                    <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  ) : (
+                    <Moon className="w-3.5 h-3.5 text-sky-400" />
+                  )}
+                </motion.div>
+              </button>
+              {isMockMode ? (
+                <button
+                  onClick={toggleMockMode}
+                  className="h-8 shrink-0 flex items-center gap-1.5 rounded-lg border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/20 px-2.5 text-violet-600 dark:text-violet-400 text-[11px] font-semibold"
+                  title="Exit mock mode"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Mock
+                </button>
+              ) : user && (
+                <button
+                  onClick={signOut}
+                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
+                  title={user.email || "Sign out"}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Mobile: Row 2 — controls / Desktop: single row */}
-          <div className="flex h-11 lg:h-14 items-center gap-2">
-            {/* Desktop Logo — hidden on mobile */}
-            <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+          {/* Mobile/Tablet: Row 2 — borrower selector full width */}
+          <div className="lg:hidden border-t border-slate-100 dark:border-slate-800/40">
+            <div className="relative py-2">
+              <button
+                onClick={() => setBorrowerOpen(!borrowerOpen)}
+                className="flex w-full items-center gap-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-3 py-2 transition-all"
+              >
+                <UserSquare2 className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                  {activeBorrower?.fullName || "All Borrowers"}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 ml-auto transition-transform",
+                    borrowerOpen && "rotate-180",
+                  )}
+                />
+              </button>
+              <AnimatePresence>
+                {borrowerOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-40"
+                      onClick={() => setBorrowerOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl shadow-slate-200/60 dark:shadow-slate-950/60 overflow-hidden max-h-64 overflow-y-auto"
+                    >
+                      <button
+                        onClick={() => { setGlobalBorrowerId(null); setBorrowerOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-4 py-2.5 text-xs transition-colors",
+                          !globalBorrowerId
+                            ? "bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold"
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50",
+                        )}
+                      >
+                        All Borrowers
+                      </button>
+                      {borrowers.length > 0 && <div className="h-px bg-slate-100 dark:bg-slate-700/50" />}
+                      {borrowers.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => { setGlobalBorrowerId(b.id); setBorrowerOpen(false); }}
+                          className={cn(
+                            "w-full text-left px-4 py-2.5 text-xs transition-colors",
+                            globalBorrowerId === b.id
+                              ? "bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold"
+                              : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50",
+                          )}
+                        >
+                          {b.fullName}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Desktop: single row */}
+          <div className="hidden lg:flex h-14 items-center gap-2">
+            {/* Desktop Logo */}
+            <div className="flex items-center gap-2.5 shrink-0">
               <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-md shadow-amber-500/20">
                 <IndianRupee className="w-4 h-4 text-white" />
               </div>
@@ -70,7 +192,7 @@ export function Layout() {
             </div>
 
             {/* Desktop nav */}
-            <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
+            <nav className="flex items-center gap-0.5 flex-1 justify-center">
               {navigation.map((item) => (
                 <NavLink
                   key={item.name}
@@ -107,9 +229,8 @@ export function Layout() {
               ))}
             </nav>
 
-            {/* Controls — fills row on mobile, right-aligned on desktop */}
-            <div className="flex items-center gap-1.5 flex-1 lg:flex-none">
-              {/* Privacy toggle */}
+            {/* Desktop controls */}
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={toggleMask}
                 className={cn(
@@ -123,37 +244,30 @@ export function Layout() {
                 {masked ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
 
-              {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
-                className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-slate-500 dark:text-slate-400"
+                className="h-8 shrink-0 flex items-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5 w-16 relative transition-all"
               >
-                <AnimatePresence mode="wait" initial={false}>
+                {/* Inactive icon on the track */}
+                {theme === "light" ? (
+                  <Moon className="absolute right-2.5 w-3 h-3 text-sky-400" />
+                ) : (
+                  <Sun className="absolute left-2.5 w-3 h-3 text-amber-400" />
+                )}
+                {/* Knob with active icon */}
+                <motion.div
+                  className="w-7 h-7 rounded-full bg-white dark:bg-slate-600 shadow-sm relative z-10 shrink-0 flex items-center justify-center"
+                  animate={{ x: theme === "light" ? 0 : 28 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                >
                   {theme === "light" ? (
-                    <motion.div
-                      key="moon"
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ duration: 0.12 }}
-                    >
-                      <Moon className="w-3.5 h-3.5" />
-                    </motion.div>
+                    <Sun className="w-3.5 h-3.5 text-amber-500" />
                   ) : (
-                    <motion.div
-                      key="sun"
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ duration: 0.12 }}
-                    >
-                      <Sun className="w-3.5 h-3.5" />
-                    </motion.div>
+                    <Moon className="w-3.5 h-3.5 text-sky-400" />
                   )}
-                </AnimatePresence>
+                </motion.div>
               </button>
 
-              {/* Logout / Exit mock */}
               {isMockMode ? (
                 <button
                   onClick={toggleMockMode}
@@ -172,11 +286,11 @@ export function Layout() {
                 </button>
               )}
 
-              {/* Borrower selector */}
-              <div className="relative flex-1 lg:flex-none">
+              {/* Desktop borrower selector */}
+              <div className="relative">
                 <button
                   onClick={() => setBorrowerOpen(!borrowerOpen)}
-                  className="flex w-full items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-3 py-2 transition-all lg:w-auto lg:max-w-[200px]"
+                  className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-3 py-2 transition-all max-w-[200px]"
                 >
                   <UserSquare2 className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                   <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
