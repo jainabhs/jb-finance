@@ -68,6 +68,8 @@ interface MockDataState {
   globalBorrowerId: string | null;
   setGlobalBorrowerId: (id: string | null) => void;
   isSupabaseConnected: boolean;
+  isMockMode: boolean;
+  toggleMockMode: () => void;
 }
 
 // ── Supabase row ↔ App model mappers ──
@@ -117,11 +119,51 @@ function interestFromRow(r: any): AppliedInterest {
     previousPrincipal: r.previous_principal != null ? Number(r.previous_principal) : undefined,
   };
 }
+// Seed data for mock mode
+const SEED_BORROWERS: Borrower[] = [
+  { id: "B-1001", fullName: "Ramesh Kumar", phone: "9876543210", email: "", createdAt: "2023-06-15T00:00:00Z" },
+  { id: "B-1002", fullName: "Suresh Patel", phone: "9988776655", email: "", createdAt: "2024-01-10T00:00:00Z" },
+  { id: "B-1003", fullName: "Mahesh Sharma", phone: "9112233445", email: "", createdAt: "2024-09-20T00:00:00Z" },
+];
+const SEED_LOANS: Loan[] = [
+  { id: "L-2001", borrowerId: "B-1001", principal: 500000, rate: 1.5, startDate: "2023-08-01", status: "active", collateralType: "Gold", collateralCode: "JB-GLD-RK-1", thresholdMonths: 12, lastPaymentDate: "2023-08-01" },
+  { id: "L-2002", borrowerId: "B-1001", principal: 200000, rate: 1, startDate: "2025-10-15", status: "active", collateralType: "Property", collateralCode: "JB-PRP-RK-1", thresholdMonths: 12, lastPaymentDate: "2025-10-15" },
+  { id: "L-2003", borrowerId: "B-1002", principal: 300000, rate: 1.1, startDate: "2024-03-01", status: "active", collateralType: "Gold", collateralCode: "JB-GLD-SP-1", thresholdMonths: 12, lastPaymentDate: "2024-03-01" },
+  { id: "L-2004", borrowerId: "B-1003", principal: 150000, rate: 2, startDate: "2026-01-10", status: "active", collateralType: "Vehicle", collateralCode: "JB-VHC-MS-1", thresholdMonths: 12, lastPaymentDate: "2026-01-10" },
+];
+
 const MockContext = createContext<MockDataState | null>(null);
 
 export function MockProvider({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
-  const isSupabaseConnected = !!supabase;
+  const { session, signOut } = useAuth();
+  const hasSupabase = !!supabase;
+  const [forceMock, setForceMock] = useState(false);
+  const isSupabaseConnected = hasSupabase && !forceMock;
+  const isMockMode = !isSupabaseConnected;
+
+  const toggleMockMode = async () => {
+    // Clear mock localStorage data on every toggle
+    localStorage.removeItem("nk_borrowers");
+    localStorage.removeItem("nk_loans");
+    localStorage.removeItem("nk_interests");
+    localStorage.removeItem("nk_global_borrower");
+
+    if (!forceMock) {
+      // Entering mock mode — sign out if authenticated, seed data
+      if (session) await signOut();
+      setBorrowers(SEED_BORROWERS);
+      setLoans(SEED_LOANS);
+      setInterests([]);
+      setGlobalBorrowerId(null);
+    } else {
+      // Exiting mock mode — clear everything
+      setBorrowers([]);
+      setLoans([]);
+      setInterests([]);
+      setGlobalBorrowerId(null);
+    }
+    setForceMock((prev) => !prev);
+  };
 
   // If Supabase is connected, initialize with empty arrays and fetch, otherwise use localstorage
   const [borrowers, setBorrowers] = useState<Borrower[]>(() =>
@@ -505,6 +547,8 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         globalBorrowerId,
         setGlobalBorrowerId,
         isSupabaseConnected,
+        isMockMode,
+        toggleMockMode,
       }}
     >
       {children}

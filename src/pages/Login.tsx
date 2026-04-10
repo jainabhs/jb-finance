@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { IndianRupee, Mail, Lock, LogIn, UserPlus, Loader2 } from "lucide-react";
+import { IndianRupee, Mail, Lock, LogIn, UserPlus, Loader2, FlaskConical } from "lucide-react";
 import { useAuth } from "../lib/AuthContext";
+import { useMockData } from "../lib/MockContext";
 
 export default function Login() {
   const { signIn, signUp } = useAuth();
+  const { toggleMockMode } = useMockData();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -146,6 +148,15 @@ export default function Login() {
             </p>
           </div>
         </div>
+
+        {/* Mock mode */}
+        <button
+          onClick={toggleMockMode}
+          className="mt-6 w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+        >
+          <FlaskConical className="w-3.5 h-3.5" />
+          Try without an account
+        </button>
       </motion.div>
     </div>
   );

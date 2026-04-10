@@ -32,7 +32,7 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { borrowers, globalBorrowerId, setGlobalBorrowerId } = useMockData();
+  const { borrowers, globalBorrowerId, setGlobalBorrowerId, isMockMode, toggleMockMode } = useMockData();
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { masked, toggleMask } = usePrivacy();
@@ -153,8 +153,16 @@ export function Layout() {
                 </AnimatePresence>
               </button>
 
-              {/* Logout */}
-              {user && (
+              {/* Logout / Exit mock */}
+              {isMockMode ? (
+                <button
+                  onClick={toggleMockMode}
+                  className="h-8 shrink-0 flex items-center gap-1.5 rounded-lg border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/20 px-2.5 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-all text-[11px] font-semibold"
+                  title="Exit mock mode"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Mock
+                </button>
+              ) : user && (
                 <button
                   onClick={signOut}
                   className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/15 transition-all text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"

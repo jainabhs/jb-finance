@@ -7,13 +7,15 @@ import GenerateInterest from "./pages/GenerateInterest";
 import History from "./pages/History";
 import Login from "./pages/Login";
 import { useAuth } from "./lib/AuthContext";
+import { useMockData } from "./lib/MockContext";
 import { supabase } from "./lib/supabase";
 
 function App() {
   const { session, loading } = useAuth();
+  const { isMockMode } = useMockData();
 
-  // If Supabase is configured but user is not authenticated, show login
-  if (supabase && loading) {
+  // If Supabase is configured and not in mock mode, require auth
+  if (supabase && !isMockMode && loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
@@ -21,7 +23,7 @@ function App() {
     );
   }
 
-  if (supabase && !session) {
+  if (supabase && !isMockMode && !session) {
     return <Login />;
   }
 
