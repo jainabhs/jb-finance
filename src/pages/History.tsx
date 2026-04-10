@@ -13,6 +13,7 @@ import {
   Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { calculateCompoundInterest } from "../lib/interest";
 import { useMockData } from "../lib/MockContext";
 import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
@@ -30,11 +31,12 @@ export default function History() {
   const [selectedLoanId, setSelectedLoanId] = useState<string>(initialLoanId);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [mobileSheetLoanId, setMobileSheetLoanId] = useState<string | null>(null);
 
   useEffect(() => {
-    lockScroll(!!deleteTargetId);
+    lockScroll(!!deleteTargetId || !!mobileSheetLoanId);
     return () => lockScroll(false);
-  }, [deleteTargetId]);
+  }, [deleteTargetId, mobileSheetLoanId]);
   const [expandedLoans, setExpandedLoans] = useState<Set<string>>(new Set());
 
   // When linked directly via ?loanId=, derive the borrower from the loan
@@ -133,7 +135,7 @@ export default function History() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ledger-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.download = `payment-history-${format(new Date(), "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV exported!");
@@ -144,7 +146,7 @@ export default function History() {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-            Payment Ledger
+            Payment History
           </h2>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
             {globalBorrower
@@ -155,50 +157,21 @@ export default function History() {
         {allHistory.length > 0 && (
           <button
             onClick={exportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-sky-300 dark:hover:border-sky-600/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold tracking-wide text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-sky-300 dark:hover:border-sky-600/50 hover:text-sky-600 dark:hover:text-sky-400 transition-all"
           >
             <Download className="w-3.5 h-3.5" /> CSV
           </button>
         )}
       </div>
 
-      {/* ══════ Stats Strip ══════ */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          {
-            label: "Collected",
-            value: m(totalCollected),
-            color: "text-emerald-600 dark:text-emerald-400",
-            bg: "bg-emerald-500/10",
-          },
-          {
-            label: "Records",
-            value: allHistory.length.toString(),
-            color: "text-sky-600 dark:text-sky-400",
-            bg: "bg-sky-500/10",
-          },
-          {
-            label: "Facilities",
-            value: uniqueLoanCount.toString(),
-            color: "text-violet-600 dark:text-violet-400",
-            bg: "bg-violet-500/10",
-          },
-        ].map((stat) => (
-          <div key={stat.label} className={`${stat.bg} rounded-xl p-3 sm:p-4`}>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 truncate">
-              {stat.label}
-            </p>
-            <p
-              className={`text-base sm:text-lg font-black font-mono leading-none truncate ${stat.color}`}
-            >
-              {stat.value}
-            </p>
-          </div>
-        ))}
+      {/* ══════ Stats + Filters ══════ */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500">
+        <span>Collected <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{m(totalCollected)}</span></span>
+        <span><span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{allHistory.length}</span> records</span>
+        <span><span className="font-mono font-semibold text-violet-600 dark:text-violet-400">{uniqueLoanCount}</span> loans</span>
       </div>
 
-      {/* ══════ Filters ══════ */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
         <div className="flex-1">
           <Select
             value={selectedLoanId}
@@ -215,19 +188,19 @@ export default function History() {
             ]}
             placeholder="Filter by loan..."
             icon={<Hash className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
-            buttonClassName="w-full bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-xl py-3 pl-4 pr-5 text-sm font-medium focus:ring-2 transition-all font-mono hover:border-sky-300 dark:hover:border-sky-600/50 focus:border-sky-500 focus:ring-sky-100 dark:focus:ring-sky-900/30"
+            buttonClassName="w-full bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-xl py-2.5 pl-4 pr-5 text-sm font-medium focus:ring-2 transition-all font-mono hover:border-sky-300 dark:hover:border-sky-600/50 focus:border-sky-500 focus:ring-sky-100 dark:focus:ring-sky-900/30"
           />
         </div>
         <div className="flex-1 relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 z-10">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 z-10">
             <Search className="h-4 w-4 text-slate-400 dark:text-slate-500" />
           </div>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search loan, borrower, item code..."
-            className="block w-full bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl py-3 pl-11 pr-4 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            placeholder="Search..."
+            className="block w-full bg-white dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
         </div>
       </div>
@@ -243,54 +216,27 @@ export default function History() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {/* Loan context banner */}
+              {/* Loan context */}
               {(() => {
                 const loan = loans.find((l) => l.id === selectedLoanId);
                 const borrower = loan ? borrowers.find((b) => b.id === loan.borrowerId) : null;
                 const isClosed = loan?.status === "closed";
                 return loan ? (
-                  <div className="mb-6 rounded-2xl border border-gray-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800/80 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{
-                          background: isClosed
-                            ? "linear-gradient(135deg, #64748b, #94a3b8)"
-                            : "linear-gradient(135deg, #2563eb, #38bdf8)",
-                        }}
-                      >
-                        {isClosed ? (
-                          <Lock className="w-5 h-5 text-white" />
-                        ) : (
-                          <Wallet className="w-5 h-5 text-white" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="text-base font-black font-mono text-slate-900 dark:text-white">
-                            {loan.collateralCode || "—"}
-                          </span>
-                          {isClosed && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 tracking-wider">
-                              CLOSED
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                          {borrower?.fullName} · {m(loan.principal)} · {loan.rate}%/mo
-                        </p>
-                      </div>
-                    </div>
+                  <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500">
+                    <span className="text-sm font-black font-mono text-slate-900 dark:text-white">{loan.collateralCode || "—"}</span>
+                    {isClosed && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">CLOSED</span>}
+                    <span>{borrower?.fullName}</span>
+                    <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(loan.principal)}</span>
+                    <span className="font-semibold text-sky-600 dark:text-sky-400">{loan.rate}%/mo</span>
                   </div>
                 ) : null;
               })()}
 
               {/* Timeline */}
               <div className="relative">
-                {/* Vertical timeline line */}
-                <div className="absolute left-[19px] sm:left-[23px] top-0 bottom-0 w-px bg-gradient-to-b from-sky-400/40 via-blue-300/20 to-transparent" />
+                <div className="absolute left-[7px] sm:left-[9px] top-2 bottom-2 w-px bg-gradient-to-b from-sky-400/40 via-blue-300/20 to-transparent" />
 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {allHistory.map((h, idx) => {
                     const isLatest = latestPerLoan.get(h.loanId) === h.id;
                     const loan = loans.find((l) => l.id === h.loanId);
@@ -298,54 +244,39 @@ export default function History() {
                     return (
                       <motion.div
                         key={h.id}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.04, duration: 0.3 }}
-                        className="relative flex gap-4 sm:gap-5 group"
+                        transition={{ delay: idx * 0.03, duration: 0.25 }}
+                        className="relative flex gap-3 sm:gap-4 group py-2 sm:py-2.5 hover:bg-sky-50/30 dark:hover:bg-sky-950/10 rounded-lg px-1 transition-colors"
                       >
-                        {/* Timeline dot */}
-                        <div className="relative z-10 shrink-0 mt-5">
+                        <div className="relative z-10 shrink-0 mt-1.5 sm:mt-2">
                           <div
-                            className={`w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] rounded-full border-2 transition-all ${idx === 0 ? "border-sky-500 bg-sky-500 shadow-[0_0_10px_rgba(56,189,248,0.4)]" : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-sky-400"}`}
+                            className={`w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] rounded-full transition-all ${idx === 0 ? "bg-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.4)]" : "bg-slate-300 dark:bg-slate-600 group-hover:bg-sky-400"}`}
                           />
                         </div>
 
-                        {/* Entry card */}
-                        <div className="flex-1 pb-4">
-                          <div className="rounded-xl border border-gray-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-800/60 p-4 sm:p-5 hover:shadow-md dark:hover:shadow-slate-900/40 transition-all hover:border-sky-200 dark:hover:border-sky-800/40 group-hover:bg-sky-50/30 dark:group-hover:bg-sky-950/10">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div className="flex flex-col gap-1.5">
-                                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono">
-                                  <CalendarDays className="w-3.5 h-3.5 text-sky-500/70" />
-                                  <span>{format(new Date(h.startDate), "dd MMM yyyy")}</span>
-                                  <span className="text-slate-300 dark:text-slate-600">→</span>
-                                  <span>{format(new Date(h.endDate), "dd MMM yyyy")}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-3 h-3 text-slate-300 dark:text-slate-600" />
-                                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                    Logged {new Date(h.createdAt).toLocaleDateString()}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center justify-between sm:justify-end gap-4 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-700/40">
-                                {isLatest && !isClosed && (
-                                  <button
-                                    onClick={() => setDeleteTargetId(h.id)}
-                                    className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
-                                    title="Rollback"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                <div className="font-mono">
-                                  <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-                                    {m(h.amount, { decimals: 2 })}
-                                  </span>
-                                </div>
-                              </div>
+                        <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                          <div className="min-w-0">
+                            <div className="text-[11px] sm:text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
+                              {format(new Date(h.startDate), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
                             </div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {new Date(h.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isLatest && !isClosed && (
+                              <button
+                                onClick={() => setDeleteTargetId(h.id)}
+                                className="text-red-400 dark:text-red-500 p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                title="Undo"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                            <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                              {m(h.amount, { decimals: 0 })}
+                            </span>
                           </div>
                         </div>
                       </motion.div>
@@ -355,13 +286,13 @@ export default function History() {
               </div>
             </motion.div>
           ) : (
-            /* ─── Grouped Accordion View ─── */
+            /* ─── Grouped View ─── */
             <motion.div
               key="grouped"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-4"
+              className="space-y-2 sm:space-y-3"
             >
               {groupedByLoan &&
                 Array.from(groupedByLoan.entries()).map(([loanId, entries], groupIdx) => {
@@ -373,128 +304,125 @@ export default function History() {
                   return (
                     <motion.div
                       key={loanId}
-                      initial={{ opacity: 0, y: 16 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: groupIdx * 0.06, duration: 0.35 }}
-                      className="rounded-2xl border border-gray-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-800/60 overflow-hidden transition-shadow hover:shadow-md dark:hover:shadow-slate-900/40"
+                      transition={{ delay: groupIdx * 0.04, duration: 0.25 }}
+                      className="rounded-xl border border-gray-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-800/60 overflow-hidden"
                     >
-                      {/* Accordion header */}
+                      {/* Row — mobile opens sheet, desktop toggles accordion */}
                       <button
                         type="button"
-                        onClick={() => toggleLoanExpanded(loanId)}
-                        className="w-full p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left cursor-pointer transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-700/20"
+                        onClick={() => {
+                          if (window.innerWidth < 640) {
+                            setMobileSheetLoanId(loanId);
+                          } else {
+                            toggleLoanExpanded(loanId);
+                          }
+                        }}
+                        className="w-full px-3.5 py-3 sm:p-5 flex items-center justify-between gap-3 text-left cursor-pointer transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-700/20"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <div
-                            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                            style={{
-                              background: isClosed
-                                ? "linear-gradient(135deg, #64748b, #94a3b8)"
-                                : "linear-gradient(135deg, #2563eb, #38bdf8)",
-                            }}
+                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${isClosed ? "bg-slate-100 dark:bg-slate-700" : "bg-gradient-to-br from-sky-400 to-blue-600"}`}
                           >
                             {isClosed ? (
-                              <Lock className="w-5 h-5 text-white" />
+                              <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                             ) : (
-                              <Wallet className="w-5 h-5 text-white" />
+                              <Wallet className="w-3.5 h-3.5 text-white" />
                             )}
                           </div>
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2.5 flex-wrap">
-                              <span className="text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm sm:text-base font-black font-mono text-slate-900 dark:text-white">
                                 {loan?.collateralCode || "—"}
                               </span>
-                              {isClosed && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 tracking-wider">
-                                  CLOSED
-                                </span>
-                              )}
+                              <span className="text-[10px] font-bold font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/60 rounded-full px-2 py-0.5">
+                                {entries.length}
+                              </span>
                             </div>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                              {borrower?.fullName} · {m(loan?.principal ?? 0)} · {loan?.rate}%/mo
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">
+                              {isExpanded
+                                ? (() => {
+                                    const unpaid = loan && loan.status === "active" ? (() => {
+                                      const start = new Date(loan.lastPaymentDate);
+                                      const now = new Date();
+                                      if (now <= start) return 0;
+                                      return calculateCompoundInterest(loan.principal, loan.rate, start, now, Math.max(1, loan.thresholdMonths)).totalInterest;
+                                    })() : 0;
+                                    const totalYield = loanTotal + unpaid;
+                                    const yieldPct = (loan?.principal ?? 0) > 0 ? (totalYield / (loan?.principal ?? 1)) * 100 : 0;
+                                    return <>{borrower?.fullName} · <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(loan?.principal ?? 0)}</span> · <span className="text-sky-600 dark:text-sky-400">{loan?.rate}%/mo</span> · Collected <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{m(loanTotal)}</span>{unpaid > 0 && <> · Unpaid <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">{m(unpaid, { decimals: 0 })}</span></>} · Yield <span className="font-mono font-semibold text-violet-600 dark:text-violet-400">{yieldPct.toFixed(1)}%</span></>;
+                                  })()
+                                : <>{borrower?.fullName} · {m(loan?.principal ?? 0)} · {loan?.rate}%/mo</>
+                              }
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 sm:gap-4">
-                          <div className="text-right">
-                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.12em] block">
-                              Collected
-                            </span>
-                            <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono leading-none">
-                              {m(loanTotal)}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-bold font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700/60 rounded-full px-2.5 py-1 tracking-wider whitespace-nowrap">
-                            {entries.length}
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                            {m(loanTotal)}
                           </span>
                           <motion.div
                             animate={{ rotate: isExpanded ? 180 : 0 }}
                             transition={{ duration: 0.2 }}
-                            className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700/60 flex items-center justify-center shrink-0"
+                            className="hidden sm:block"
                           >
                             <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                           </motion.div>
                         </div>
                       </button>
 
-                      {/* Collapsible timeline entries */}
+                      {/* Desktop: collapsible entries */}
                       <AnimatePresence initial={false}>
                         {isExpanded && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="overflow-hidden"
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="overflow-hidden hidden sm:block"
                           >
-                            <div className="border-t border-slate-100 dark:border-slate-700/40 px-5 sm:px-6 py-4 relative">
-                              {/* Mini timeline line */}
-                              <div className="absolute left-[35px] sm:left-[39px] top-4 bottom-4 w-px bg-gradient-to-b from-sky-300/30 to-transparent" />
-
+                            <div className="bg-slate-50/80 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700/40">
+                            <div className="px-5 pb-3 relative max-h-64 overflow-y-auto">
+                              <div className="absolute left-[28px] top-0 bottom-3 w-px bg-gradient-to-b from-sky-300/30 to-transparent" />
                               <div className="space-y-0.5">
                                 {entries.map((h, idx) => {
                                   const isLatest = latestPerLoan.get(h.loanId) === h.id;
                                   return (
                                     <div
                                       key={h.id}
-                                      className="relative flex gap-3 sm:gap-4 group py-2.5 hover:bg-sky-50/30 dark:hover:bg-sky-950/10 rounded-lg px-1 transition-colors"
+                                      className="relative flex gap-3 group py-2 hover:bg-sky-50/30 dark:hover:bg-sky-950/10 rounded-lg px-1 transition-colors"
                                     >
-                                      {/* Dot */}
-                                      <div className="relative z-10 shrink-0 mt-2">
+                                      <div className="relative z-10 shrink-0 mt-1.5">
                                         <div
                                           className={`w-2 h-2 rounded-full transition-all ${idx === 0 ? "bg-sky-500 shadow-[0_0_6px_rgba(56,189,248,0.3)]" : "bg-slate-300 dark:bg-slate-600 group-hover:bg-sky-400"}`}
                                         />
                                       </div>
-
-                                      <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
-                                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono truncate">
-                                          <span>
-                                            {format(new Date(h.startDate), "dd MMM yyyy")}
-                                          </span>
-                                          <span className="text-slate-300 dark:text-slate-600">
-                                            →
-                                          </span>
-                                          <span>{format(new Date(h.endDate), "dd MMM yyyy")}</span>
-                                          <span className="text-[10px] text-slate-300 dark:text-slate-600 ml-1 hidden sm:inline">
-                                            · {new Date(h.createdAt).toLocaleDateString()}
-                                          </span>
+                                      <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                                        <div className="min-w-0">
+                                          <div className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
+                                            {format(new Date(h.startDate), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                                          </div>
+                                          <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                            {new Date(h.createdAt).toLocaleDateString()}
+                                          </div>
                                         </div>
-                                        <div className="flex items-center gap-3 shrink-0">
+                                        <div className="flex items-center gap-2 shrink-0">
                                           {isLatest && !isClosed && (
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation();
                                                 setDeleteTargetId(h.id);
                                               }}
-                                              className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 p-1 rounded transition-all hover:bg-red-50/80 dark:hover:bg-red-950/20"
-                                              title="Rollback"
+                                              className="text-red-400 dark:text-red-500 p-1 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                              title="Undo"
                                             >
                                               <Trash2 className="w-3 h-3" />
                                             </button>
                                           )}
                                           <span className="font-mono text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                            {m(h.amount, { decimals: 2 })}
+                                            {m(h.amount, { decimals: 0 })}
                                           </span>
                                         </div>
                                       </div>
@@ -502,6 +430,7 @@ export default function History() {
                                   );
                                 })}
                               </div>
+                            </div>
                             </div>
                           </motion.div>
                         )}
@@ -518,32 +447,166 @@ export default function History() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700/50 flex flex-col items-center justify-center p-12 text-center min-h-[360px]"
+            className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700/50 flex flex-col items-center justify-center p-8 sm:p-12 text-center min-h-[200px] sm:min-h-[300px]"
           >
-            <div
-              className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
-              style={{
-                background: "linear-gradient(135deg, rgba(100,116,139,0.1), rgba(148,163,184,0.1))",
-              }}
-            >
-              <HistoryIcon className="w-9 h-9 text-slate-300 dark:text-slate-600" />
-            </div>
+            <HistoryIcon className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
             <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm mb-1">
               No Payment History
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs">
               {selectedLoanId
                 ? "No interest has been collected for this loan yet."
-                : "No records found. Start by calculating and committing interest from the Interest page."}
+                : "No records found. Calculate and save interest from the Interest page."}
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* ══════ Mobile Bottom Sheet for Grouped View ══════ */}
+      <AnimatePresence>
+        {mobileSheetLoanId && (() => {
+          const sheetLoan = loans.find((l) => l.id === mobileSheetLoanId);
+          const sheetBorrower = sheetLoan ? borrowers.find((b) => b.id === sheetLoan.borrowerId) : null;
+          const sheetIsClosed = sheetLoan?.status === "closed";
+          const sheetEntries = interests
+            .filter((i) => i.loanId === mobileSheetLoanId)
+            .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+          const sheetTotal = sheetEntries.reduce((s, e) => s + e.amount, 0);
+          if (!sheetLoan) return null;
+          return (
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:hidden">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+                onClick={() => setMobileSheetLoanId(null)}
+              />
+              <motion.div
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0 }}
+                transition={{ type: "spring", damping: 28, stiffness: 220 }}
+                className="relative w-full bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 rounded-t-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+              >
+                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
+
+                {/* Stats card — sticky */}
+                <div className="px-4 pt-1 pb-2 shrink-0">
+                  <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-slate-950 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-sky-500/5 -translate-y-8 translate-x-8" />
+                    <div className="relative">
+                      <div className="flex items-start justify-between mb-2.5">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-base font-black font-mono text-white">{sheetLoan.collateralCode || "—"}</span>
+                            {sheetIsClosed && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">CLOSED</span>}
+                          </div>
+                          <p className="text-[11px] text-slate-400">{sheetBorrower?.fullName}</p>
+                        </div>
+                        <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded">{sheetLoan.rate}%/mo</span>
+                      </div>
+                      {(() => {
+                        const sheetUnpaid = sheetLoan.status === "active" ? (() => {
+                          const start = new Date(sheetLoan.lastPaymentDate);
+                          const now = new Date();
+                          if (now <= start) return 0;
+                          return calculateCompoundInterest(sheetLoan.principal, sheetLoan.rate, start, now, Math.max(1, sheetLoan.thresholdMonths)).totalInterest;
+                        })() : 0;
+                        const sheetYieldTotal = sheetTotal + sheetUnpaid;
+                        const sheetYieldPct = sheetLoan.principal > 0 ? (sheetYieldTotal / sheetLoan.principal) * 100 : 0;
+                        return (
+                          <div className="grid grid-cols-4 gap-2 pt-2.5 border-t border-slate-700/50">
+                            <div>
+                              <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Principal</div>
+                              <div className="text-xs font-semibold text-white font-mono mt-0.5">{m(sheetLoan.principal)}</div>
+                            </div>
+                            <div>
+                              <div className="text-[9px] text-emerald-500 uppercase tracking-wider font-bold">Collected</div>
+                              <div className="text-xs font-semibold text-emerald-300 font-mono mt-0.5">{m(sheetTotal)}</div>
+                            </div>
+                            <div>
+                              <div className="text-[9px] text-amber-500 uppercase tracking-wider font-bold">Unpaid</div>
+                              <div className="text-xs font-semibold text-amber-300 font-mono mt-0.5">{m(sheetUnpaid, { decimals: 0 })}</div>
+                            </div>
+                            <div>
+                              <div className="text-[9px] text-violet-500 uppercase tracking-wider font-bold">Yield</div>
+                              <div className="text-xs font-semibold text-violet-300 font-mono mt-0.5">{sheetYieldPct.toFixed(1)}%</div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-y-auto flex-1 px-4 pb-4">
+                  {/* Timeline entries */}
+                  <div className="relative">
+                    <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gradient-to-b from-sky-400/40 via-blue-300/20 to-transparent" />
+                    <div className="space-y-0.5">
+                      {sheetEntries.map((h, idx) => {
+                        const isLatest = latestPerLoan.get(h.loanId) === h.id;
+                        return (
+                          <div
+                            key={h.id}
+                            className="relative flex gap-3 group py-2 rounded-lg px-1"
+                          >
+                            <div className="relative z-10 shrink-0 mt-1.5">
+                              <div
+                                className={`w-[8px] h-[8px] rounded-full ${idx === 0 ? "bg-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.4)]" : "bg-slate-300 dark:bg-slate-600"}`}
+                              />
+                            </div>
+                            <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                              <div className="min-w-0">
+                                <div className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
+                                  {format(new Date(h.startDate), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                                </div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                  {new Date(h.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isLatest && !sheetIsClosed && (
+                                  <button
+                                    onClick={() => { setMobileSheetLoanId(null); setDeleteTargetId(h.id); }}
+                                    className="text-red-400 dark:text-red-500 p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40"
+                                    title="Undo"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                                  {m(h.amount, { decimals: 0 })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-slate-100 dark:border-slate-700/50 flex shrink-0">
+                  <button
+                    onClick={() => setMobileSheetLoanId(null)}
+                    className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
       {/* ══════ Delete Confirmation Modal ══════ */}
       <AnimatePresence>
         {deleteTargetId && (
-          <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="fixed inset-0 z-100 flex items-end lg:items-center justify-center lg:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -556,23 +619,24 @@ export default function History() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
+              className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl w-full lg:max-w-md shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
             >
+              <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
               <div className="p-5 sm:p-6 flex-1">
                 <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/40 mx-auto">
                   <AlertOctagon className="w-7 h-7 text-red-500" />
                 </div>
                 <h3 className="text-lg font-black text-center text-slate-900 dark:text-white tracking-tight mb-2">
-                  Rollback Entry
+                  Undo Last Entry
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm text-center leading-relaxed">
-                  This will reverse the ledger state and undo any principal capitalizations.
+                  This will remove this record and restore the previous principal.
                 </p>
               </div>
               <div className="border-t border-slate-100 dark:border-slate-700/50 flex shrink-0">
                 <button
                   onClick={() => setDeleteTargetId(null)}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl"
                 >
                   Cancel
                 </button>
@@ -580,9 +644,9 @@ export default function History() {
                   onClick={() => {
                     deleteInterest(deleteTargetId);
                     setDeleteTargetId(null);
-                    toast.success("Ledger entry rolled back.");
+                    toast.success("Entry removed successfully.");
                   }}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-red-500 hover:bg-red-600 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-red-500 hover:bg-red-600 transition-colors rounded-none lg:rounded-br-2xl"
                 >
                   Confirm Undo
                 </button>

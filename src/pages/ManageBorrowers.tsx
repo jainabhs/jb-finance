@@ -68,7 +68,7 @@ export default function ManageBorrowers() {
           </div>
           <button
             onClick={openAddModal}
-            className="tech-button-primary flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-widest"
+            className="tech-button-primary flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold tracking-wide"
           >
             <Plus className="w-4 h-4" /> Add
           </button>
@@ -211,7 +211,7 @@ export default function ManageBorrowers() {
       {/* Modal */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center items-center sm:p-4">
+          <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:justify-center items-center lg:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -224,15 +224,16 @@ export default function ManageBorrowers() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 220 }}
-              className="relative w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+              className="relative w-full lg:max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
             >
+              <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
               <div className="p-5 sm:p-6 overflow-y-auto flex-1">
                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-5 tracking-tight">
                   {editBId ? "Edit Borrower" : "Add Borrower"}
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                       Full Name
                     </label>
                     <input
@@ -246,7 +247,7 @@ export default function ManageBorrowers() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                       Phone
                     </label>
                     <input
@@ -260,7 +261,7 @@ export default function ManageBorrowers() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                       Email{" "}
                       <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">
                         optional
@@ -282,14 +283,14 @@ export default function ManageBorrowers() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   form="borrower-form"
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none lg:rounded-br-2xl"
                 >
                   {editBId ? "Save" : "Add"}
                 </button>

@@ -59,7 +59,7 @@ export default function Login() {
         <div className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-2xl p-6 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                 Email
               </label>
               <div className="relative">
@@ -75,7 +75,7 @@ export default function Login() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -116,7 +116,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={submitting}
-              className="tech-button-primary w-full py-3 text-sm uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60"
+              className="tech-button-primary w-full py-3 text-sm tracking-wide flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

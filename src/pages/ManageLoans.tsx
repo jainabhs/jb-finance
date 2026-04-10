@@ -8,6 +8,7 @@ import {
   Car,
   AlertOctagon,
   Terminal,
+  IndianRupee,
   UserSquare2,
   XCircle,
   Calendar,
@@ -55,7 +56,7 @@ export default function ManageLoans() {
   const [newL, setNewL] = useState({
     borrowerId: "",
     principal: 0,
-    rate: 2,
+    rate: "1.1",
     startDate: new Date().toISOString().split("T")[0],
     collateralType: "Gold",
     collateralCode: "",
@@ -309,7 +310,7 @@ export default function ManageLoans() {
   const [editTarget, setEditTarget] = useState<Loan | null>(null);
   const [editForm, setEditForm] = useState({
     principal: 0,
-    rate: 0,
+    rate: "",
     collateralType: "Gold",
     collateralCode: "",
     startDate: "",
@@ -326,7 +327,7 @@ export default function ManageLoans() {
   const openEditModal = (loan: Loan) => {
     setEditForm({
       principal: loan.principal,
-      rate: loan.rate,
+      rate: String(loan.rate),
       collateralType: loan.collateralType,
       collateralCode: loan.collateralCode,
       startDate: loan.startDate,
@@ -339,8 +340,8 @@ export default function ManageLoans() {
   const handleEditSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    const { collateralType: _ct, collateralCode: _cc, ...editable } = editForm;
-    updateLoan(editTarget.id, editable);
+    const { collateralType: _ct, collateralCode: _cc, rate, ...editable } = editForm;
+    updateLoan(editTarget.id, { ...editable, rate: parseFloat(rate) || 0 });
     setEditTarget(null);
     toast.success("Loan updated!");
   };
@@ -365,14 +366,15 @@ export default function ManageLoans() {
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newL.borrowerId && newL.principal > 0) {
+    const parsedRate = parseFloat(newL.rate) || 0;
+    if (newL.borrowerId && newL.principal > 0 && parsedRate > 0) {
       const fullCode = generateCollateralCode(newL.collateralType, newL.collateralCode);
-      addLoan({ ...newL, collateralCode: fullCode });
+      addLoan({ ...newL, rate: parsedRate, collateralCode: fullCode });
       setShowModal(false);
       setNewL({
         borrowerId: "",
         principal: 0,
-        rate: 2,
+        rate: "1.1",
         startDate: new Date().toISOString().split("T")[0],
         collateralType: "Gold",
         collateralCode: "",
@@ -475,7 +477,7 @@ export default function ManageLoans() {
           </div>
           <button
             onClick={handleOpenModal}
-            className="tech-button-primary flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-widest"
+            className="tech-button-primary flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold tracking-wide"
           >
             <Plus className="w-4 h-4" /> New
           </button>
@@ -512,7 +514,7 @@ export default function ManageLoans() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-2 md:gap-3"
       >
         {filtered.map((l, index) => {
           const b = borrowers.find((x) => x.id === l.borrowerId);
@@ -547,153 +549,176 @@ export default function ManageLoans() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.3 }}
               key={l.id}
-              className={`bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-xl flex flex-col md:flex-row relative overflow-hidden transition-all group cursor-pointer ${isClosed ? "opacity-75" : ""}`}
+              className={`bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-xl relative overflow-hidden transition-all cursor-pointer ${isClosed ? "opacity-75" : ""}`}
               onClick={() => setQuickView(l)}
             >
-              <div
-                className={`absolute top-0 bottom-0 left-0 w-1.5 transition-colors ${agingColor}`}
-              />
-
-              {/* Left Section - Identity */}
-              <div className="flex-[1.5] p-4 sm:p-5 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700/40 relative">
-                {isClosed && (
-                  <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1">
-                    <Lock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                      Closed
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-slate-400 dark:text-slate-400">
-                        Collateral ID
+              {/* ── Mobile: compact list row ── */}
+              <div className="lg:hidden flex items-stretch">
+                <div className={`w-1 shrink-0 ${agingColor}`} />
+                <div className="flex-1 px-3.5 py-3 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-black font-mono text-slate-900 dark:text-white truncate">
+                        {l.collateralCode || "—"}
                       </span>
+                      {isClosed && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 uppercase shrink-0">
+                          Closed
+                        </span>
+                      )}
                       {overdueMonths > 0 && (
                         <span
-                          className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${overdueMonths >= 6 ? "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400" : "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"}`}
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${overdueMonths >= 6 ? "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400" : "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"}`}
                         >
-                          {overdueMonths}mo due
+                          {overdueMonths}mo
                         </span>
                       )}
                     </div>
-                    <span
-                      className={`text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-white leading-none transition-colors ${!isClosed ? "group-hover:text-blue-600 dark:group-hover:text-sky-400" : ""}`}
-                    >
-                      {l.collateralCode || "—"}
-                    </span>
-                  </div>
-                  {getCollateralIcon(l.collateralType)}
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 rounded-xl p-4">
-                  <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 block mb-1">
-                    Borrower
-                  </span>
-                  <span className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate block">
-                    {b?.fullName || "Unknown"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Right Section - Financials & Actions */}
-              <div className="flex-[2] p-4 sm:p-5 flex flex-col justify-between">
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 block mb-1">
-                      Principal Amount
-                    </span>
-                    <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight leading-none">
+                    <span className="text-sm font-black text-slate-900 dark:text-white font-mono shrink-0">
                       {m(l.principal)}
                     </span>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] sm:text-xs uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 block mb-1">
-                      Monthly Rate
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      {b?.fullName || "Unknown"}
                     </span>
-                    <span className="text-2xl sm:text-3xl font-black text-sky-600 dark:text-sky-400 font-mono tracking-tight leading-none">
-                      {l.rate}%{" "}
-                      <span className="text-xs text-slate-400 dark:text-slate-500 font-sans tracking-normal">
-                        / mo
-                      </span>
+                    <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 shrink-0 ml-2">
+                      {l.rate}%/mo
                     </span>
                   </div>
-                </div>
-
-                {pendingInterest > 0 && (
-                  <div className="mb-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-amber-600 dark:text-amber-400 block">
-                        Pending Interest
+                  {pendingInterest > 0 && (
+                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-dashed border-amber-200 dark:border-amber-800/40">
+                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        Pending
                       </span>
-                      <span className="text-[10px] text-amber-500 dark:text-amber-500/70">
-                        as of today · {overdueMonths}mo unpaid
+                      <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 font-mono">
+                        {m(pendingInterest, { decimals: 0 })}
                       </span>
                     </div>
-                    <span className="text-lg font-black text-amber-700 dark:text-amber-300 font-mono">
-                      {m(pendingInterest, { decimals: 0 })}
-                    </span>
-                  </div>
-                )}
-
-                {isClosed && (
-                  <div className="mb-6 grid grid-cols-2 gap-3">
-                    {l.closedDate && (
-                      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 rounded-xl p-3">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 block mb-1">
-                          Closed On
-                        </span>
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 font-mono">
-                          {format(new Date(l.closedDate), "dd MMM yyyy")}
-                        </span>
-                        {l.closureNote && (
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-relaxed truncate">
-                            {l.closureNote}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-600 dark:text-emerald-400 block mb-1">
-                        Interest Earned
+                  )}
+                  {isClosed && totalEarned > 0 && (
+                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-dashed border-emerald-200 dark:border-emerald-800/40">
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        Earned
                       </span>
-                      <span className="text-sm font-black text-emerald-700 dark:text-emerald-300 font-mono">
+                      <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 font-mono">
                         {m(totalEarned)}
                       </span>
                     </div>
-                  </div>
-                )}
-
-                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  )}
+                </div>
+                {/* Action strip */}
+                <div
+                  className="flex flex-col border-l border-slate-100 dark:border-slate-700/40 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
                     onClick={() => void handleLoanTicket(l)}
-                    className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-3 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-violet-50 dark:hover:bg-violet-900/15 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-500/40 transition-all"
-                    title="Loan ticket"
+                    className="flex-1 px-3 flex items-center justify-center text-violet-500 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                    title="Loan Ticket"
                   >
-                    <Ticket className="w-4 h-4" />
+                    <Ticket className="w-4 h-4 -rotate-12" />
+                  </button>
+                  {!isClosed && (
+                    <button
+                      onClick={() => openClosureModal(l)}
+                      className="flex-1 px-3 flex items-center justify-center text-red-400 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-slate-100 dark:border-slate-700/40"
+                      title="Close Loan"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Desktop/Tablet: compact horizontal row ── */}
+              <div className="hidden lg:flex flex-col group">
+                {/* Data row */}
+                <div className="flex items-center px-4 lg:px-5 py-3 min-w-0">
+                  <div className={`w-1.5 self-stretch shrink-0 rounded-full ${agingColor} mr-3 lg:mr-4`} />
+
+                  {/* Identity */}
+                  <div className="flex items-center gap-2.5 min-w-0 w-1/4 shrink-0">
+                    {getCollateralIcon(l.collateralType)}
+                    <div className="min-w-0">
+                      <span className={`text-sm lg:text-base font-black font-mono text-slate-900 dark:text-white leading-none block truncate transition-colors ${!isClosed ? "group-hover:text-blue-600 dark:group-hover:text-sky-400" : ""}`}>
+                        {l.collateralCode || "—"}
+                      </span>
+                      <span className="text-[11px] lg:text-xs text-slate-500 dark:text-slate-400 truncate block mt-0.5">
+                        {b?.fullName || "Unknown"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Principal */}
+                  <div className="w-1/5 min-w-0">
+                    <span className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold block">Principal</span>
+                    <span className="text-sm lg:text-lg font-black text-slate-900 dark:text-white font-mono leading-none mt-0.5 block truncate">{m(l.principal)}</span>
+                  </div>
+
+                  {/* Rate */}
+                  <div className="w-16 lg:w-20 shrink-0">
+                    <span className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold block">Rate</span>
+                    <span className="text-sm lg:text-lg font-black text-sky-600 dark:text-sky-400 font-mono leading-none mt-0.5 block">{l.rate}%</span>
+                  </div>
+
+                  {/* Pending / Earned — lg only */}
+                  {pendingInterest > 0 && (
+                    <div className="hidden lg:block w-1/5 min-w-0">
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 uppercase tracking-wider font-bold block">Pending</span>
+                      <span className="text-lg font-black text-amber-700 dark:text-amber-300 font-mono leading-none mt-0.5 block truncate">{m(pendingInterest, { decimals: 0 })}</span>
+                    </div>
+                  )}
+                  {isClosed && totalEarned > 0 && (
+                    <div className="hidden lg:block w-1/5 min-w-0">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-bold block">Earned</span>
+                      <span className="text-lg font-black text-emerald-700 dark:text-emerald-300 font-mono leading-none mt-0.5 block truncate">{m(totalEarned)}</span>
+                    </div>
+                  )}
+
+                  {/* Badges — pushed right */}
+                  <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                    {isClosed && (
+                      <span className="text-[9px] font-bold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Closed
+                      </span>
+                    )}
+                    {overdueMonths > 0 && (
+                      <span className={`text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${overdueMonths >= 6 ? "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400" : "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"}`}>
+                        {overdueMonths}mo
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions row */}
+                <div className="border-t border-slate-100 dark:border-slate-700/40 flex shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => void handleLoanTicket(l)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-violet-700 dark:text-violet-200 bg-violet-100 dark:bg-violet-800/40 hover:bg-violet-200 dark:hover:bg-violet-700/50 transition-colors border-r border-violet-200/50 dark:border-violet-600/30"
+                  >
+                    <Ticket className="w-3.5 h-3.5 -rotate-12" /> Ticket
                   </button>
                   {isClosed ? (
                     <Link
                       to={`/history?loanId=${l.id}`}
-                      className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-sky-700 dark:text-sky-200 bg-sky-100 dark:bg-sky-800/40 hover:bg-sky-200 dark:hover:bg-sky-700/50 transition-colors"
                     >
-                      <FileText className="w-4 h-4 opacity-70" /> View History Ledger
+                      <FileText className="w-3.5 h-3.5" /> History
                     </Link>
                   ) : (
                     <>
                       <Link
                         to={`/interest?loanId=${l.id}`}
-                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-500/40 transition-all"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-800/40 hover:bg-emerald-200 dark:hover:bg-emerald-700/50 transition-colors border-r border-emerald-200/50 dark:border-emerald-600/30"
                       >
-                        <Terminal className="w-4 h-4 opacity-70" /> Interest
+                        <IndianRupee className="w-3.5 h-3.5" /> Interest
                       </Link>
                       <button
                         onClick={() => openClosureModal(l)}
-                        className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/15 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-800/40 transition-all"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-red-600 dark:text-red-200 bg-red-100 dark:bg-red-800/40 hover:bg-red-200 dark:hover:bg-red-700/50 transition-colors"
                       >
-                        <XCircle className="w-4 h-4 opacity-70" />
+                        <XCircle className="w-3.5 h-3.5" /> Close
                       </button>
                     </>
                   )}
@@ -720,7 +745,7 @@ export default function ManageLoans() {
       {/* ─── New Loan Modal ─── */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-100 flex flex-col justify-end sm:justify-center items-center sm:p-4">
+          <div className="fixed inset-0 z-100 flex flex-col justify-end lg:justify-center items-center lg:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -733,8 +758,9 @@ export default function ManageLoans() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+              className="relative w-full lg:max-w-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
             >
+              <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
               <div className="p-5 sm:p-6 overflow-y-auto flex-1">
                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-5 tracking-tight flex items-center gap-3">
                   <span className="w-2.5 h-2.5 bg-sky-500 rounded-full animate-pulse" /> Add New
@@ -744,15 +770,15 @@ export default function ManageLoans() {
                 {globalBorrowerId === null && borrowers.length > 0 ? (
                   <div className="p-6 bg-sky-50 dark:bg-sky-900/20 rounded-2xl border border-sky-200 dark:border-sky-700/50 flex flex-col items-center justify-center py-10 text-center">
                     <UserSquare2 className="w-10 h-10 text-sky-600 dark:text-sky-400 mb-4" />
-                    <p className="text-base font-bold text-sky-700 dark:text-sky-300 uppercase tracking-widest mb-2">
-                      Context Required
+                    <p className="text-base font-bold text-sky-700 dark:text-sky-300 tracking-wide mb-2">
+                      Select a Borrower
                     </p>
                     <p className="text-sm text-sky-600/70 dark:text-sky-400/60 mb-6 max-w-sm">
-                      Please select a borrower from the top navbar.
+                      Pick a borrower from the top navbar to create a loan.
                     </p>
                     <button
                       onClick={() => setShowModal(false)}
-                      className="tech-button px-8 py-3 text-sm uppercase tracking-widest"
+                      className="tech-button px-8 py-3 text-sm tracking-wide"
                     >
                       Close
                     </button>
@@ -760,7 +786,7 @@ export default function ManageLoans() {
                 ) : borrowers.length === 0 ? (
                   <div className="p-6 bg-red-50 dark:bg-red-900/15 rounded-2xl border border-red-200 dark:border-red-800/40 flex flex-col items-center justify-center py-10 text-center">
                     <AlertOctagon className="w-10 h-10 text-red-500 mb-4" />
-                    <p className="text-base font-bold text-red-600 dark:text-red-400 uppercase tracking-widest mb-2">
+                    <p className="text-base font-bold text-red-600 dark:text-red-400 tracking-wide mb-2">
                       Cannot Proceed
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm">
@@ -768,7 +794,7 @@ export default function ManageLoans() {
                     </p>
                     <button
                       onClick={() => setShowModal(false)}
-                      className="tech-button px-8 py-3 text-sm uppercase tracking-widest"
+                      className="tech-button px-8 py-3 text-sm tracking-wide"
                     >
                       Acknowledge
                     </button>
@@ -777,7 +803,7 @@ export default function ManageLoans() {
                   <form id="new-loan-form" onSubmit={handleAdd} className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
                           Borrower Context
                         </label>
                         <Select
@@ -790,7 +816,7 @@ export default function ManageLoans() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
                           Principal Amount (₹)
                         </label>
                         <input
@@ -806,7 +832,7 @@ export default function ManageLoans() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
                           Monthly Rate (%)
                         </label>
                         <input
@@ -814,13 +840,16 @@ export default function ManageLoans() {
                           type="text"
                           inputMode="decimal"
                           placeholder="e.g. 2"
-                          value={newL.rate || ""}
-                          onChange={(e) => setNewL({ ...newL, rate: Number(e.target.value) || 0 })}
+                          value={newL.rate}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || /^\d*\.?\d*$/.test(v)) setNewL({ ...newL, rate: v });
+                          }}
                           className={`${inputCls} text-sky-600 dark:text-sky-400`}
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
                           Collateral Type
                         </label>
                         <Select
@@ -836,7 +865,7 @@ export default function ManageLoans() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
                           Collateral ID
                         </label>
                         <div className="flex">
@@ -855,7 +884,7 @@ export default function ManageLoans() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
                           Start Date
                         </label>
                         <input
@@ -867,7 +896,7 @@ export default function ManageLoans() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1 flex items-center gap-2">
                           Penalty Threshold <span className="opacity-50">(Months)</span>
                         </label>
                         <input
@@ -890,14 +919,14 @@ export default function ManageLoans() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   form="new-loan-form"
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none lg:rounded-br-2xl"
                 >
                   Save Loan
                 </button>
@@ -910,7 +939,7 @@ export default function ManageLoans() {
       {/* ─── Close Loan Modal ─── */}
       <AnimatePresence>
         {closureTarget && (
-          <div className="fixed inset-0 z-100 flex flex-col justify-end sm:justify-center items-center sm:p-4">
+          <div className="fixed inset-0 z-100 flex flex-col justify-end lg:justify-center items-center lg:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -923,19 +952,20 @@ export default function ManageLoans() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+              className="relative w-full lg:max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
             >
-              <div className="p-5 sm:p-6 overflow-y-auto flex-1">
+              <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 flex items-center justify-center">
-                    <XCircle className="w-6 h-6 text-red-500" />
+                <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 flex items-center justify-center shrink-0">
+                    <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-500" />
                   </div>
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
                       Close Loan
                     </h3>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 font-mono tracking-wider mt-0.5">
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono tracking-wider truncate">
                       {closureTarget.collateralCode || "—"} —{" "}
                       {borrowers.find((b) => b.id === closureTarget.borrowerId)?.fullName}
                     </p>
@@ -943,62 +973,43 @@ export default function ManageLoans() {
                 </div>
 
                 {/* Settlement Summary */}
-                <div className="space-y-3 mb-6">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-slate-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/40 rounded-xl p-4">
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
-                        Loan Started
-                      </span>
-                      <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                        {format(new Date(closureTarget.startDate), "dd MMM yyyy")}
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/40 rounded-xl p-4">
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
-                        Principal
-                      </span>
-                      <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                        {m(closureTarget.principal)}
-                      </span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/40 rounded-xl p-4">
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
-                        Collected
-                      </span>
-                      <span className="text-sm font-black text-sky-600 dark:text-sky-400 font-mono">
-                        {m(closureCalc?.totalCollected || 0)}
-                      </span>
-                    </div>
+                <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                  <div className="flex items-center gap-x-4 gap-y-0.5 flex-wrap text-[11px] text-slate-400 dark:text-slate-500">
+                    <span>Started <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{format(new Date(closureTarget.startDate), "dd MMM yy")}</span></span>
+                    <span>Principal <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(closureTarget.principal)}</span></span>
+                    <span>Collected <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{m(closureCalc?.totalCollected || 0)}</span></span>
                   </div>
 
                   {closureCalc?.valid && (
-                    <div className="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4">
-                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest block mb-1">
-                        Unpaid Interest (Up to Closure)
+                    <div className="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/40 rounded-lg sm:rounded-xl p-2.5 sm:p-4 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 tracking-wide">
+                        Unpaid Interest
                       </span>
-                      <span className="text-lg font-black text-amber-700 dark:text-amber-300 font-mono">
+                      <span className="text-sm sm:text-lg font-black text-amber-700 dark:text-amber-300 font-mono">
                         {m(closureCalc.unpaidInterest, { decimals: 2 })}
                       </span>
                     </div>
                   )}
 
-                  <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-xl p-4">
-                    <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest block mb-1">
-                      Final Settlement Amount
-                    </span>
-                    <span className="text-2xl font-black text-sky-700 dark:text-sky-300 font-mono">
-                      {m(closureCalc?.settlement || closureTarget.principal, { decimals: 2 })}
-                    </span>
-                    <p className="text-[10px] text-sky-500 dark:text-sky-400/60 mt-1 tracking-wide">
+                  <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 tracking-wide">
+                        Settlement
+                      </span>
+                      <span className="text-lg sm:text-2xl font-black text-sky-700 dark:text-sky-300 font-mono">
+                        {m(closureCalc?.settlement || closureTarget.principal, { decimals: 2 })}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-sky-500 dark:text-sky-400/60 mt-0.5 tracking-wide">
                       Principal + Unpaid Interest
                     </p>
                   </div>
                 </div>
 
-                {/* Closure Date */}
-                <div className="space-y-5 mb-6">
+                {/* Closure Date & Note */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5 ml-1 flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5" /> Closure Date
                     </label>
                     <input
@@ -1009,7 +1020,7 @@ export default function ManageLoans() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-2">
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5 ml-1 flex items-center gap-2">
                       <FileText className="w-3.5 h-3.5" /> Note{" "}
                       <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">
                         OPTIONAL
@@ -1019,7 +1030,7 @@ export default function ManageLoans() {
                       value={closureNote}
                       onChange={(e) => setClosureNote(e.target.value)}
                       rows={2}
-                      placeholder="e.g. Full settlement received via NEFT"
+                      placeholder="e.g. Full settlement via NEFT"
                       className={`${inputCls} font-sans resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500`}
                     />
                   </div>
@@ -1030,14 +1041,14 @@ export default function ManageLoans() {
                 <button
                   type="button"
                   onClick={() => setClosureTarget(null)}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleCloseLoan}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-red-500 hover:bg-red-600 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-red-500 hover:bg-red-600 transition-colors rounded-none lg:rounded-br-2xl flex items-center justify-center gap-2"
                 >
                   <Lock className="w-4 h-4" /> Confirm
                 </button>
@@ -1070,7 +1081,7 @@ export default function ManageLoans() {
               .filter((i) => i.loanId === quickView.id)
               .reduce((s, i) => s + i.amount, 0);
             return (
-              <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center items-center sm:p-4">
+              <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:justify-center items-center lg:p-4">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1083,22 +1094,18 @@ export default function ManageLoans() {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: "100%", opacity: 0 }}
                   transition={{ type: "spring", damping: 28, stiffness: 220 }}
-                  className="relative w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+                  className="relative w-full lg:max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
                 >
+                  <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
                   <div className="p-5 sm:p-6 overflow-y-auto flex-1">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
+                          {getCollateralIcon(quickView.collateralType)}
                           <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                             {quickView.collateralCode || "—"}
                           </span>
-                          <button
-                            onClick={() => openEditModal(quickView)}
-                            className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-md hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors cursor-pointer"
-                          >
-                            <Edit3 className="w-3 h-3" /> Edit
-                          </button>
                           {qClosed && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               Closed
@@ -1116,42 +1123,98 @@ export default function ManageLoans() {
                           {qb?.fullName || "Unknown"}
                         </p>
                       </div>
-                      {getCollateralIcon(quickView.collateralType)}
+                      <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                        {!qClosed && qCalc && qCalc.periods.length > 0 && (
+                          <>
+                            <button
+                              onClick={() => void handleSharePending(quickView)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg border border-sky-200 dark:border-sky-700/50 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors"
+                              title="Share"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => void handleDownloadPending(quickView)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg border border-emerald-200 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+                              title="Download"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => openEditModal(quickView)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Key stats */}
-                    <div className="grid grid-cols-3 gap-2.5 mb-4">
-                      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 rounded-xl p-3 text-center">
-                        <div className="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold mb-1">
-                          Principal
-                        </div>
-                        <div className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                          {m(quickView.principal)}
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 rounded-xl p-3 text-center">
-                        <div className="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold mb-1">
-                          Rate
-                        </div>
-                        <div className="text-sm font-black text-sky-600 dark:text-sky-400 font-mono">
-                          {quickView.rate}%/mo
-                        </div>
-                      </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-xl p-3 text-center">
-                        <div className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-bold mb-1">
-                          Earned
-                        </div>
-                        <div className="text-sm font-black text-emerald-700 dark:text-emerald-300 font-mono">
-                          {m(qEarned)}
+                    {/* Principal & Rate */}
+                    <div className="mb-4 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-slate-950 px-4 py-4 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-sky-500/5 -translate-y-8 translate-x-8" />
+                      <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full bg-sky-500/5 translate-y-6 -translate-x-6" />
+                      <div className="relative">
+                        <div className="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold mb-1">Principal</div>
+                        <div className="text-2xl font-black text-white font-mono tracking-tight leading-none">{m(quickView.principal)}</div>
+                        <div className="mt-2.5 flex items-center gap-2">
+                          <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded">{quickView.rate}%/mo</span>
+                          <span className="text-[10px] text-slate-500">·</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{format(new Date(quickView.startDate), "dd MMM yyyy")}</span>
                         </div>
                       </div>
                     </div>
+
+                    {/* Loan Yield — ticket style */}
+                    {(() => {
+                      const qPending = qCalc?.totalInterest || 0;
+                      const totalYield = qEarned + qPending;
+                      const yieldPct = quickView.principal > 0 ? (totalYield / quickView.principal) * 100 : 0;
+                      return (
+                        <div className="mb-4 rounded-xl overflow-hidden">
+                          {/* Ticket top */}
+                          <div className="bg-emerald-800 dark:bg-emerald-900 px-4 py-3">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-emerald-300/80">Collected</span>
+                                <span className="text-xs font-bold text-emerald-100 font-mono">{m(qEarned)}</span>
+                              </div>
+                              {qPending > 0 && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] text-amber-300/80">Pending</span>
+                                  <span className="text-xs font-bold text-amber-200 font-mono">{m(qPending, { decimals: 0 })}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {/* Perforated tear */}
+                          <div className="relative bg-emerald-900 dark:bg-emerald-950 h-0">
+                            <div className="absolute left-0 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white dark:bg-slate-800" />
+                            <div className="absolute right-0 translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white dark:bg-slate-800" />
+                            <div className="mx-5 border-t border-dashed border-emerald-600/30" />
+                          </div>
+                          {/* Ticket stub */}
+                          <div className="bg-emerald-900 dark:bg-emerald-950 px-4 py-3 flex items-center justify-between">
+                            <div>
+                              <span className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-[0.15em] block">Total</span>
+                              <span className="text-lg font-black text-white font-mono tracking-tight">{m(totalYield, { decimals: 0 })}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-[0.15em] block">Return</span>
+                              <span className="text-lg font-black text-emerald-300 font-mono">{yieldPct.toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Pending breakdown */}
                     {qCalc && qCalc.periods.length > 0 && (
                       <div className="mb-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 tracking-wide">
                             Pending Breakdown
                           </span>
                           <span className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono">
@@ -1192,7 +1255,7 @@ export default function ManageLoans() {
                     {/* Closed info */}
                     {qClosed && quickView.closedDate && (
                       <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/40 rounded-xl p-3 mb-4">
-                        <span className="text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold block mb-1">
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 tracking-wide font-bold block mb-1">
                           Closed On
                         </span>
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-200 font-mono">
@@ -1230,7 +1293,7 @@ export default function ManageLoans() {
                         setDeleteTarget(quickView);
                         setQuickView(null);
                       }}
-                      className="py-3.5 px-4 text-xs font-bold tracking-widest uppercase text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/15 hover:text-red-500 dark:hover:text-red-400 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl flex items-center justify-center"
+                      className="py-3.5 px-4 text-xs font-bold tracking-widest uppercase text-red-400 dark:text-red-500 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl flex items-center justify-center"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1240,35 +1303,19 @@ export default function ManageLoans() {
                     >
                       Close
                     </button>
-                    {!qClosed && qCalc && qCalc.periods.length > 0 && (
-                      <>
-                        <button
-                          onClick={() => void handleSharePending(quickView)}
-                          className="py-3.5 px-4 text-xs font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-sky-900/15 hover:text-sky-600 dark:hover:text-sky-400 transition-colors border-r border-slate-100 dark:border-slate-700/50 flex items-center justify-center gap-1.5"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => void handleDownloadPending(quickView)}
-                          className="py-3.5 px-4 text-xs font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/15 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-r border-slate-100 dark:border-slate-700/50 flex items-center justify-center gap-1.5"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
                     {!qClosed ? (
                       <Link
                         to={`/interest?loanId=${quickView.id}`}
                         onClick={() => setQuickView(null)}
-                        className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none lg:rounded-br-2xl flex items-center justify-center gap-2"
                       >
-                        <Terminal className="w-3.5 h-3.5" /> Interest
+                        <IndianRupee className="w-3.5 h-3.5" /> Interest
                       </Link>
                     ) : (
                       <Link
                         to={`/history?loanId=${quickView.id}`}
                         onClick={() => setQuickView(null)}
-                        className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none lg:rounded-br-2xl flex items-center justify-center gap-2"
                       >
                         <FileText className="w-3.5 h-3.5" /> History
                       </Link>
@@ -1283,7 +1330,7 @@ export default function ManageLoans() {
       {/* Edit loan modal */}
       <AnimatePresence>
         {editTarget && (
-          <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center items-center sm:p-4">
+          <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:justify-center items-center lg:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1296,16 +1343,17 @@ export default function ManageLoans() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 220 }}
-              className="relative w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+              className="relative w-full lg:max-w-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
             >
+              <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
               <div className="p-5 sm:p-6 overflow-y-auto flex-1">
                 <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 tracking-tight">
                   Edit Loan — {editTarget.collateralCode || "—"}
                 </h3>
-                <form id="edit-loan-form" onSubmit={handleEditSave} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                <form id="edit-loan-form" onSubmit={handleEditSave}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                         Principal (₹)
                       </label>
                       <input
@@ -1321,7 +1369,7 @@ export default function ManageLoans() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                         Rate (%/mo)
                       </label>
                       <input
@@ -1329,15 +1377,16 @@ export default function ManageLoans() {
                         type="text"
                         inputMode="decimal"
                         placeholder="2"
-                        value={editForm.rate || ""}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, rate: Number(e.target.value) || 0 })
-                        }
+                        value={editForm.rate}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "" || /^\d*\.?\d*$/.test(v)) setEditForm({ ...editForm, rate: v });
+                        }}
                         className={inputCls}
                       />
                     </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                         Collateral
                       </label>
                       <div className="bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-500 dark:text-slate-400 font-mono">
@@ -1345,7 +1394,7 @@ export default function ManageLoans() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                         Start Date
                       </label>
                       <input
@@ -1357,7 +1406,7 @@ export default function ManageLoans() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                         Threshold (mo)
                       </label>
                       <input
@@ -1379,14 +1428,14 @@ export default function ManageLoans() {
                 <button
                   type="button"
                   onClick={() => setEditTarget(null)}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   form="edit-loan-form"
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-none lg:rounded-br-2xl"
                 >
                   Save
                 </button>
@@ -1399,7 +1448,7 @@ export default function ManageLoans() {
       {/* Delete loan confirmation */}
       <AnimatePresence>
         {deleteTarget && (
-          <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center items-center sm:p-4">
+          <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:justify-center items-center lg:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1412,8 +1461,9 @@ export default function ManageLoans() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 220 }}
-              className="relative w-full max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
+              className="relative w-full lg:max-w-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
             >
+              <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
               <div className="p-5 sm:p-6 flex-1">
                 <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/40 mx-auto">
                   <Trash2 className="w-7 h-7 text-red-500" />
@@ -1438,7 +1488,7 @@ export default function ManageLoans() {
               <div className="border-t border-slate-100 dark:border-slate-700/50 flex shrink-0">
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none rounded-bl-2xl sm:rounded-bl-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl"
                 >
                   Cancel
                 </button>
@@ -1448,7 +1498,7 @@ export default function ManageLoans() {
                     setDeleteTarget(null);
                     toast.success(`Loan ${deleteTarget.id} permanently deleted.`);
                   }}
-                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-red-500 hover:bg-red-600 transition-colors rounded-none rounded-br-2xl sm:rounded-br-2xl"
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-red-500 hover:bg-red-600 transition-colors rounded-none lg:rounded-br-2xl"
                 >
                   Delete Forever
                 </button>

@@ -74,19 +74,52 @@
 
   .tech-button {
     @apply relative overflow-hidden bg-white text-slate-700 font-semibold tracking-wide rounded-xl
-           border border-gray-200 hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] transition-all shadow-sm
+           border border-gray-200 hover:bg-slate-50 hover:border-slate-300 active:scale-[0.97] transition-all shadow-sm
            dark:bg-slate-800/80 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:border-slate-500;
   }
 
   .tech-button-primary {
-    @apply relative overflow-hidden text-white font-bold tracking-wide rounded-xl
-           hover:scale-[1.01] active:scale-[0.98] transition-all outline-none;
-    background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
-    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
+    @apply relative text-white font-bold tracking-wide rounded-xl
+           active:scale-[0.97] transition-all duration-200 outline-none overflow-hidden;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%);
+    border: none;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
   }
-  .tech-button-primary:hover {
-    background: linear-gradient(135deg, #3b82f6 0%, #38bdf8 100%);
-    box-shadow: 0 6px 28px rgba(56, 189, 248, 0.3);
+  .tech-button-primary > * {
+    position: relative;
+    z-index: 1;
+  }
+  .tech-button-primary::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    z-index: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: skewX(-15deg);
+    animation: btn-sheen 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes btn-sheen {
+    0%, 100% { left: -100%; }
+    50% { left: 150%; }
+  }
+  .tech-button-primary:active {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  :is(.dark) .tech-button-primary {
+    background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #818cf8 100%);
+    color: #1e1b4b;
+    border: none;
+    box-shadow: 0 2px 10px rgba(129, 140, 248, 0.25);
+  }
+  :is(.dark) .tech-button-primary::after {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  }
+  :is(.dark) .tech-button-primary:active {
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25), 0 2px 8px rgba(129, 140, 248, 0.25);
   }
 
   /* Apple Liquid Glass — light mode */

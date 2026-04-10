@@ -46,7 +46,7 @@ export function Layout() {
       <header className="sticky top-0 z-50 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Mobile: Row 1 — branding centered */}
-          <div className="flex md:hidden h-12 items-center justify-center border-b border-slate-100 dark:border-slate-800/40">
+          <div className="flex lg:hidden h-12 items-center justify-center border-b border-slate-100 dark:border-slate-800/40">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-sm shadow-amber-500/20">
                 <IndianRupee className="w-4 h-4 text-white" />
@@ -58,9 +58,9 @@ export function Layout() {
           </div>
 
           {/* Mobile: Row 2 — controls / Desktop: single row */}
-          <div className="flex h-11 md:h-14 items-center gap-2">
+          <div className="flex h-11 lg:h-14 items-center gap-2">
             {/* Desktop Logo — hidden on mobile */}
-            <div className="hidden md:flex items-center gap-2.5 shrink-0">
+            <div className="hidden lg:flex items-center gap-2.5 shrink-0">
               <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-yellow-600 shadow-md shadow-amber-500/20">
                 <IndianRupee className="w-4 h-4 text-white" />
               </div>
@@ -70,7 +70,7 @@ export function Layout() {
             </div>
 
             {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
+            <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
               {navigation.map((item) => (
                 <NavLink
                   key={item.name}
@@ -108,7 +108,7 @@ export function Layout() {
             </nav>
 
             {/* Controls — fills row on mobile, right-aligned on desktop */}
-            <div className="flex items-center gap-1.5 flex-1 md:flex-none">
+            <div className="flex items-center gap-1.5 flex-1 lg:flex-none">
               {/* Privacy toggle */}
               <button
                 onClick={toggleMask}
@@ -165,10 +165,10 @@ export function Layout() {
               )}
 
               {/* Borrower selector */}
-              <div className="relative flex-1 md:flex-none">
+              <div className="relative flex-1 lg:flex-none">
                 <button
                   onClick={() => setBorrowerOpen(!borrowerOpen)}
-                  className="flex w-full items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-3 py-2 transition-all md:w-auto md:max-w-[200px]"
+                  className="flex w-full items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600/50 rounded-lg px-3 py-2 transition-all lg:w-auto lg:max-w-[200px]"
                 >
                   <UserSquare2 className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                   <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
@@ -243,7 +243,7 @@ export function Layout() {
       </header>
 
       {/* ─── Main ─── */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-28 md:pb-6">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-28 lg:pb-6">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -255,7 +255,7 @@ export function Layout() {
       </main>
 
       {/* ─── Mobile Dock — Apple Liquid Glass ─── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-5 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pointer-events-none">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-5 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pointer-events-none">
         <nav className="dock-glass flex items-center justify-around py-1.5 px-1 rounded-[18px] pointer-events-auto">
           {navigation.map((item) => (
             <NavLink
