@@ -602,7 +602,7 @@ export default function GenerateInterest() {
 
       {/* Fixed Action Footer — outside motion.div to avoid transform clipping */}
       {loan && activeTab === "draft" && fullCalculation && fullCalculation.periods.length > 0 && (
-        <div className="fixed bottom-[5.25rem] lg:bottom-0 left-0 right-0 z-40 lg:bg-white/95 lg:dark:bg-slate-900/95 lg:backdrop-blur-xl lg:border-t lg:border-slate-200 lg:dark:border-slate-700/60 lg:shadow-[0_-4px_20px_rgba(0,0,0,0.08)] lg:dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] lg:safe-area-bottom px-5 lg:px-0">
+        <div className="fixed bottom-24 lg:bottom-0 left-0 right-0 z-40 lg:bg-white/95 lg:dark:bg-slate-900/95 lg:backdrop-blur-xl lg:border-t lg:border-slate-200 lg:dark:border-slate-700/60 lg:shadow-[0_-4px_20px_rgba(0,0,0,0.08)] lg:dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] lg:safe-area-bottom px-5 lg:px-0">
           <div className="max-w-7xl mx-auto lg:px-6 px-4 py-2.5 sm:py-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none rounded-2xl lg:rounded-none border border-slate-200/80 dark:border-slate-700/60 lg:border-0 shadow-lg lg:shadow-none">
             <AnimatePresence>
               {selectedCalculation?.isCapitalized && (
