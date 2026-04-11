@@ -36,6 +36,7 @@ export default function GenerateInterest() {
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [activeTab, setActiveTab] = useState<"draft" | "history">("draft");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
 
   useEffect(() => {
     lockScroll(!!deleteTargetId);
@@ -131,20 +132,25 @@ export default function GenerateInterest() {
   );
 
   const handleCommit = async () => {
-    if (!loan || !selectedCalculation || !fullCalculation) return;
-    const selectedPeriods = fullCalculation.periods.slice(0, selectedIndex + 1);
-    for (let idx = 0; idx < selectedPeriods.length; idx++) {
-      const p = selectedPeriods[idx];
-      const isLast = idx === selectedPeriods.length - 1;
-      await addInterest({
-        loanId: loan.id,
-        startDate: p.startDate.toISOString(),
-        endDate: p.endDate.toISOString(),
-        amount: p.amount,
-        newPrincipal: isLast ? selectedCalculation.finalPrincipal : p.principalAtTime,
-      });
+    if (!loan || !selectedCalculation || !fullCalculation || committing) return;
+    setCommitting(true);
+    try {
+      const selectedPeriods = fullCalculation.periods.slice(0, selectedIndex + 1);
+      for (let idx = 0; idx < selectedPeriods.length; idx++) {
+        const p = selectedPeriods[idx];
+        const isLast = idx === selectedPeriods.length - 1;
+        await addInterest({
+          loanId: loan.id,
+          startDate: p.startDate.toISOString(),
+          endDate: p.endDate.toISOString(),
+          amount: p.amount,
+          newPrincipal: isLast ? selectedCalculation.finalPrincipal : p.principalAtTime,
+        });
+      }
+      toast.success(`${selectedPeriods.length} month(s) saved!`);
+    } finally {
+      setCommitting(false);
     }
-    toast.success(`${selectedPeriods.length} month(s) saved!`);
   };
 
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -642,10 +648,10 @@ export default function GenerateInterest() {
               </div>
               <button
                 onClick={handleCommit}
-                disabled={selectedIndex < 0}
+                disabled={selectedIndex < 0 || committing}
                 className="tech-button-primary px-5 py-2.5 sm:px-6 sm:py-3 text-xs tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 outline-none"
               >
-                <HandCoins className="w-4 h-4 sm:w-5 sm:h-5 -rotate-12" /> Collect
+                <HandCoins className="w-4 h-4 sm:w-5 sm:h-5 -rotate-12" /> {committing ? "Saving…" : "Collect"}
               </button>
             </div>
           </div>
