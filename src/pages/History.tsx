@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { calculateCompoundInterest } from "../lib/interest";
 import { useMockData } from "../lib/MockContext";
 import { useSearchParams } from "react-router-dom";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { Select } from "../components/ui/Select";
 import toast from "react-hot-toast";
 import { usePrivacy } from "../lib/PrivacyContext";
@@ -256,7 +256,7 @@ export default function History() {
                         <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
                           <div className="min-w-0">
                             <div className="text-[11px] sm:text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                              {format(new Date(h.startDate), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                              {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
                             </div>
                             <div className="text-[10px] text-slate-400 dark:text-slate-500">
                               {new Date(h.createdAt).toLocaleDateString()}
@@ -400,7 +400,7 @@ export default function History() {
                                       <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
                                         <div className="min-w-0">
                                           <div className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                                            {format(new Date(h.startDate), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                                            {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
                                           </div>
                                           <div className="text-[10px] text-slate-400 dark:text-slate-500">
                                             {new Date(h.createdAt).toLocaleDateString()}
@@ -558,7 +558,7 @@ export default function History() {
                             <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
                               <div className="min-w-0">
                                 <div className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                                  {format(new Date(h.startDate), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                                  {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
                                 </div>
                                 <div className="text-[10px] text-slate-400 dark:text-slate-500">
                                   {new Date(h.createdAt).toLocaleDateString()}

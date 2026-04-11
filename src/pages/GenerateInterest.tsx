@@ -17,7 +17,7 @@ import { calculateCompoundInterest } from "../lib/interest";
 import { useMockData } from "../lib/MockContext";
 import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { Select } from "../components/ui/Select";
 import { usePrivacy } from "../lib/PrivacyContext";
 import { lockScroll } from "../lib/utils";
@@ -141,8 +141,8 @@ export default function GenerateInterest() {
         const isLast = idx === selectedPeriods.length - 1;
         await addInterest({
           loanId: loan.id,
-          startDate: p.startDate.toISOString(),
-          endDate: p.endDate.toISOString(),
+          startDate: format(p.startDate, "yyyy-MM-dd"),
+          endDate: format(p.endDate, "yyyy-MM-dd"),
           amount: p.amount,
           newPrincipal: isLast ? selectedCalculation.finalPrincipal : p.principalAtTime,
         });
@@ -238,7 +238,7 @@ export default function GenerateInterest() {
           doc.setTextColor(71, 85, 105);
           doc.text(`${idx + 1}`, margin + 3, y + 2);
           doc.text(
-            `${format(new Date(h.startDate), "dd MMM yy")} → ${format(new Date(h.endDate), "dd MMM yy")}`,
+            `${format(addDays(new Date(h.startDate), 1), "dd MMM yy")} → ${format(new Date(h.endDate), "dd MMM yy")}`,
             margin + 14,
             y + 2,
           );
@@ -425,7 +425,7 @@ export default function GenerateInterest() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className={`text-[11px] font-mono font-semibold truncate ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
-                                    {format(p.startDate, "dd MMM")} → {format(p.endDate, "dd MMM yy")}
+                                    {format(addDays(p.startDate, 1), "dd MMM")} → {format(p.endDate, "dd MMM yy")}
                                     {p.label !== "1 Month" && <span className={`ml-1.5 text-[9px] ${isSelected ? "text-sky-500" : "text-slate-400"}`}>{p.label}</span>}
                                   </div>
                                   <div className={`text-[10px] ${isSelected ? "text-violet-500 dark:text-violet-400" : "text-violet-400 dark:text-violet-500"}`}>
@@ -469,7 +469,7 @@ export default function GenerateInterest() {
                                   {idx + 1}
                                 </div>
                                 <div className={`flex-1 text-sm min-w-0 ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>
-                                  <span className="font-mono">{format(p.startDate, "dd MMM yyyy")}</span>
+                                  <span className="font-mono">{format(addDays(p.startDate, 1), "dd MMM yyyy")}</span>
                                   <span className={`mx-2 ${isSelected ? "text-sky-400" : "text-slate-300 dark:text-slate-600"}`}>→</span>
                                   <span className="font-mono">{format(p.endDate, "dd MMM yyyy")}</span>
                                   {p.label !== "1 Month" && (
@@ -559,7 +559,7 @@ export default function GenerateInterest() {
                           <div className="flex items-center gap-2.5 sm:gap-4">
                             <div className="flex-1 min-w-0">
                               <div className="text-[11px] sm:text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                                {format(new Date(h.startDate), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                                {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
                               </div>
                               <div className="text-[10px] text-slate-400 dark:text-slate-500">
                                 {new Date(h.createdAt).toLocaleDateString()}
@@ -957,7 +957,7 @@ export default function GenerateInterest() {
                       }}
                     />
                     <span style={{ fontSize: 11, color: "#64748b", fontFamily: "monospace" }}>
-                      {format(new Date(h.startDate), "MMM yy")} →{" "}
+                      {format(addDays(new Date(h.startDate), 1), "MMM yy")} →{" "}
                       {format(new Date(h.endDate), "MMM yy")}
                     </span>
                   </div>

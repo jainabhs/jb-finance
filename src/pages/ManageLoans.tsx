@@ -27,7 +27,7 @@ import { calculateCompoundInterest } from "../lib/interest";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Select } from "../components/ui/Select";
-import { format, differenceInMonths } from "date-fns";
+import { format, differenceInMonths, addDays } from "date-fns";
 import { lockScroll } from "../lib/utils";
 
 import { usePrivacy } from "../lib/PrivacyContext";
@@ -168,7 +168,7 @@ export default function ManageLoans() {
           doc.setTextColor(71, 85, 105);
           doc.text(`${idx + 1}`, margin + 3, y + 2);
           doc.text(
-            `${format(p.startDate, "dd MMM yy")} → ${format(p.endDate, "dd MMM yy")}   ${p.label}`,
+            `${format(addDays(p.startDate, 1), "dd MMM yy")} → ${format(p.endDate, "dd MMM yy")}   ${p.label}`,
             margin + 14,
             y + 2,
           );
@@ -1231,7 +1231,7 @@ export default function ManageLoans() {
                                 </span>
                                 <div>
                                   <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
-                                    {format(p.startDate, "dd MMM")} →{" "}
+                                    {format(addDays(p.startDate, 1), "dd MMM")} →{" "}
                                     {format(p.endDate, "dd MMM yy")}
                                   </span>
                                   {p.label !== "1 Month" && (
@@ -1752,7 +1752,7 @@ export default function ManageLoans() {
                         </div>
                         <div>
                           <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace" }}>
-                            {format(p.startDate, "dd MMM yy")} → {format(p.endDate, "dd MMM yy")}
+                            {format(addDays(p.startDate, 1), "dd MMM yy")} → {format(p.endDate, "dd MMM yy")}
                           </div>
                           <div style={{ fontSize: 8, color: "#94a3b8" }}>
                             {p.label} · Base: ₹{p.principalAtTime.toLocaleString("en-IN")}
