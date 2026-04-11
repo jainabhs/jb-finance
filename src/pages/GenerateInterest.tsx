@@ -130,18 +130,20 @@ export default function GenerateInterest() {
     [loanHistory],
   );
 
-  const handleCommit = () => {
+  const handleCommit = async () => {
     if (!loan || !selectedCalculation || !fullCalculation) return;
     const selectedPeriods = fullCalculation.periods.slice(0, selectedIndex + 1);
-    selectedPeriods.forEach((p) => {
-      addInterest({
+    for (let idx = 0; idx < selectedPeriods.length; idx++) {
+      const p = selectedPeriods[idx];
+      const isLast = idx === selectedPeriods.length - 1;
+      await addInterest({
         loanId: loan.id,
         startDate: p.startDate.toISOString(),
         endDate: p.endDate.toISOString(),
         amount: p.amount,
-        newPrincipal: loan.principal,
+        newPrincipal: isLast ? selectedCalculation.finalPrincipal : p.principalAtTime,
       });
-    });
+    }
     toast.success(`${selectedPeriods.length} month(s) saved!`);
   };
 

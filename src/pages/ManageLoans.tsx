@@ -816,39 +816,6 @@ export default function ManageLoans() {
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
-                          Principal Amount (₹)
-                        </label>
-                        <input
-                          required
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="e.g. 1,50,000"
-                          value={fmtNum(newL.principal)}
-                          onChange={(e) =>
-                            setNewL({ ...newL, principal: parseNum(e.target.value) })
-                          }
-                          className={inputCls}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
-                          Monthly Rate (%)
-                        </label>
-                        <input
-                          required
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="e.g. 2"
-                          value={newL.rate}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "" || /^\d*\.?\d*$/.test(v)) setNewL({ ...newL, rate: v });
-                          }}
-                          className={`${inputCls} text-sky-600 dark:text-sky-400`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
                           Collateral Type
                         </label>
                         <Select
@@ -874,13 +841,28 @@ export default function ManageLoans() {
                           <input
                             required
                             type="text"
-                            inputMode="numeric"
                             value={newL.collateralCode}
                             onChange={(e) => setNewL({ ...newL, collateralCode: e.target.value })}
-                            placeholder="9015"
+                            placeholder="RK-1"
                             className={`${inputCls} rounded-l-none placeholder:text-slate-400 dark:placeholder:text-slate-500`}
                           />
                         </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
+                          Principal Amount (₹)
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g. 1,50,000"
+                          value={fmtNum(newL.principal)}
+                          onChange={(e) =>
+                            setNewL({ ...newL, principal: parseNum(e.target.value) })
+                          }
+                          className={inputCls}
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
@@ -892,6 +874,23 @@ export default function ManageLoans() {
                           value={newL.startDate}
                           onChange={(e) => setNewL({ ...newL, startDate: e.target.value })}
                           className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-2 ml-1">
+                          Monthly Rate (%)
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="e.g. 2"
+                          value={newL.rate}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || /^\d*\.?\d*$/.test(v)) setNewL({ ...newL, rate: v });
+                          }}
+                          className={`${inputCls} text-sky-600 dark:text-sky-400`}
                         />
                       </div>
                       <div>
@@ -1351,6 +1350,14 @@ export default function ManageLoans() {
                 </h3>
                 <form id="edit-loan-form" onSubmit={handleEditSave}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
+                        Collateral
+                      </label>
+                      <div className="bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-500 dark:text-slate-400 font-mono">
+                        {editForm.collateralCode || "—"}
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                         Principal (₹)
@@ -1369,6 +1376,18 @@ export default function ManageLoans() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
+                        Start Date
+                      </label>
+                      <input
+                        required
+                        type="date"
+                        value={editForm.startDate}
+                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
                         Rate (%/mo)
                       </label>
                       <input
@@ -1381,26 +1400,6 @@ export default function ManageLoans() {
                           const v = e.target.value;
                           if (v === "" || /^\d*\.?\d*$/.test(v)) setEditForm({ ...editForm, rate: v });
                         }}
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
-                        Collateral
-                      </label>
-                      <div className="bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm text-slate-500 dark:text-slate-400 font-mono">
-                        {editForm.collateralCode || "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5">
-                        Start Date
-                      </label>
-                      <input
-                        required
-                        type="date"
-                        value={editForm.startDate}
-                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
                         className={inputCls}
                       />
                     </div>

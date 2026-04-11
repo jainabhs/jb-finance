@@ -31,6 +31,7 @@ export function calculateCompoundInterest(
   let currentPrincipal = initialPrincipal;
   let currentDate = startOfDay(startDate);
   const finalDate = startOfDay(endDate);
+  const originDate = new Date(currentDate); // preserve original start for addMonths anchoring
 
   if (finalDate <= currentDate) {
     return {
@@ -48,7 +49,8 @@ export function calculateCompoundInterest(
   let accruedUncapitalizedInterest = 0;
 
   while (currentDate < finalDate) {
-    let nextMonth = addMonths(currentDate, 1);
+    // Anchor to original start date so Feb doesn't permanently shift all subsequent periods
+    let nextMonth = addMonths(originDate, monthsAccumulated + 1);
 
     // Check if we hit the compounding threshold (e.g. 12 months unpaid)
     if (monthsAccumulated > 0 && monthsAccumulated % thresholdMonths === 0) {
@@ -76,7 +78,13 @@ export function calculateCompoundInterest(
       // Partial days remaining
       const days = differenceInDays(finalDate, currentDate);
       const monthlyAmount = currentPrincipal * (monthlyRatePct / 100);
-      const amount = (monthlyAmount / 30) * days;
+      // First month rule: half month if ≤15 days, full month if >15 days
+      const amount =
+        monthsAccumulated === 0
+          ? days <= 15
+            ? monthlyAmount / 2
+            : monthlyAmount
+          : (monthlyAmount / 30) * days;
 
       accruedUncapitalizedInterest += amount;
       totalInterest += amount;

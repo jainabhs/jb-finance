@@ -367,7 +367,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
 
       const { error: lError } = await supabase
         .from("loans")
-        .update({ principal_amount: i.newPrincipal })
+        .update({ principal_amount: i.newPrincipal, last_payment_date: i.endDate })
         .eq("id", i.loanId);
       if (lError) {
         console.error("Supabase error", lError);
@@ -416,7 +416,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         iTarg.previousPrincipal || loans.find((l) => l.id === iTarg.loanId)?.principal;
       const { error: lError } = await supabase
         .from("loans")
-        .update({ principal_amount: oldPrin })
+        .update({ principal_amount: oldPrin, last_payment_date: iTarg.startDate })
         .eq("id", iTarg.loanId);
       if (lError) {
         console.error("Supabase error", lError);
