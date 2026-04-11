@@ -367,11 +367,10 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
 
       const { error: lError } = await supabase
         .from("loans")
-        .update({ principal_amount: i.newPrincipal, last_payment_date: i.endDate })
+        .update({ principal_amount: i.newPrincipal })
         .eq("id", i.loanId);
       if (lError) {
-        console.error("Supabase error", lError);
-        return;
+        console.error("Supabase loan update error (interest already inserted)", lError);
       }
 
       const newInterest: AppliedInterest = { ...interestFromRow(data), previousPrincipal };
@@ -416,7 +415,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         iTarg.previousPrincipal || loans.find((l) => l.id === iTarg.loanId)?.principal;
       const { error: lError } = await supabase
         .from("loans")
-        .update({ principal_amount: oldPrin, last_payment_date: iTarg.startDate })
+        .update({ principal_amount: oldPrin })
         .eq("id", iTarg.loanId);
       if (lError) {
         console.error("Supabase loan update error (interest already deleted)", lError);
