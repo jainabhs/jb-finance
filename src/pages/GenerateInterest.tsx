@@ -690,8 +690,8 @@ export default function GenerateInterest() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    deleteInterest(deleteTargetId);
+                  onClick={async () => {
+                    await deleteInterest(deleteTargetId!);
                     setDeleteTargetId(null);
                     toast.success("Entry removed successfully.");
                   }}

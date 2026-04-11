@@ -419,8 +419,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         .update({ principal_amount: oldPrin, last_payment_date: iTarg.startDate })
         .eq("id", iTarg.loanId);
       if (lError) {
-        console.error("Supabase error", lError);
-        return;
+        console.error("Supabase loan update error (interest already deleted)", lError);
       }
     }
 
