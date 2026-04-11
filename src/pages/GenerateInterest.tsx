@@ -9,6 +9,9 @@ import {
   Trash2,
   Lock,
   Share2,
+  XCircle,
+  Calendar,
+  FileText,
 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
@@ -24,7 +27,7 @@ import { lockScroll } from "../lib/utils";
 import { Download } from "lucide-react";
 
 export default function GenerateInterest() {
-  const { loans, borrowers, addInterest, interests, globalBorrowerId, deleteInterest } =
+  const { loans, borrowers, addInterest, interests, globalBorrowerId, deleteInterest, closeLoan } =
     useMockData();
   const { m } = usePrivacy();
   const [searchParams] = useSearchParams();
@@ -37,11 +40,14 @@ export default function GenerateInterest() {
   const [activeTab, setActiveTab] = useState<"draft" | "history">("draft");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
+  const [showClosureModal, setShowClosureModal] = useState(false);
+  const [closureDate, setClosureDate] = useState(new Date().toISOString().split("T")[0]);
+  const [closureNote, setClosureNote] = useState("");
 
   useEffect(() => {
-    lockScroll(!!deleteTargetId);
+    lockScroll(!!deleteTargetId || showClosureModal);
     return () => lockScroll(false);
-  }, [deleteTargetId]);
+  }, [deleteTargetId, showClosureModal]);
 
   // When linked directly via ?loanId=, derive the borrower from the loan
   const linkedLoan = initialLoanId ? loans.find((l) => l.id === initialLoanId) : null;
@@ -256,7 +262,7 @@ export default function GenerateInterest() {
       doc.roundedRect(margin, y, pw - margin * 2, 14, 3, 3, "F");
       doc.setTextColor(148, 163, 184);
       doc.setFontSize(7);
-      doc.text("TOTAL COLLECTED", margin + 5, y + 6);
+      doc.text("TOTAL INTEREST PAID", margin + 5, y + 6);
       doc.setTextColor(16, 185, 129);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
@@ -365,6 +371,16 @@ export default function GenerateInterest() {
             animate={{ opacity: 1 }}
             className="flex flex-col relative transition-colors"
           >
+            {/* Close Loan */}
+            {!isClosedLoan && (
+              <button
+                onClick={() => setShowClosureModal(true)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 mb-3 rounded-xl border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 text-red-500 dark:text-red-400 text-xs font-bold tracking-wide hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+              >
+                <XCircle className="w-4 h-4" /> Close This Loan
+              </button>
+            )}
+
             {/* Tab Header */}
             <div className="relative z-10 flex items-center justify-between mb-4 gap-3">
               <div className="flex flex-col min-w-0">
@@ -711,6 +727,109 @@ export default function GenerateInterest() {
         )}
       </AnimatePresence>
 
+      {/* ─── Close Loan Modal ─── */}
+      <AnimatePresence>
+        {showClosureModal && loan && borrower && (
+          <div className="fixed inset-0 z-[100] flex items-end lg:items-center justify-center lg:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm"
+              onClick={() => setShowClosureModal(false)}
+            />
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl lg:rounded-2xl w-full lg:max-w-md shadow-2xl safe-area-bottom flex flex-col overflow-hidden"
+            >
+              <div className="lg:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
+              <div className="p-5 sm:p-6 flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 flex items-center justify-center shrink-0">
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">Close Loan</h3>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate">
+                      {loan.collateralCode || "—"} — {borrower.fullName}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-x-4 flex-wrap text-[11px] text-slate-400 dark:text-slate-500">
+                    <span>Principal <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(loan.principal)}</span></span>
+                    <span>Collected <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{m(totalCollectedInterest)}</span></span>
+                  </div>
+                  {currentUnpaidInterest > 0 && (
+                    <div className="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/40 rounded-lg p-2.5 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 tracking-wide">Unpaid Interest</span>
+                      <span className="text-sm font-black text-amber-700 dark:text-amber-300 font-mono">{m(currentUnpaidInterest, { decimals: 2 })}</span>
+                    </div>
+                  )}
+                  <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 tracking-wide">Settlement</span>
+                      <span className="text-lg font-black text-sky-700 dark:text-sky-300 font-mono">{m(loan.principal + currentUnpaidInterest, { decimals: 2 })}</span>
+                    </div>
+                    <p className="text-[10px] text-sky-500 dark:text-sky-400/60 mt-0.5 tracking-wide">Principal + Unpaid Interest</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5 ml-1 flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5" /> Closure Date
+                    </label>
+                    <input
+                      type="date"
+                      value={closureDate}
+                      onChange={(e) => setClosureDate(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm outline-none focus:border-sky-500 dark:focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all text-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5 ml-1 flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5" /> Note <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">OPTIONAL</span>
+                    </label>
+                    <textarea
+                      value={closureNote}
+                      onChange={(e) => setClosureNote(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Full settlement via NEFT"
+                      className="w-full bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm outline-none focus:border-sky-500 dark:focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all text-slate-900 dark:text-slate-100 resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 dark:border-slate-700/50 flex shrink-0">
+                <button
+                  onClick={() => setShowClosureModal(false)}
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-r border-slate-100 dark:border-slate-700/50 rounded-none lg:rounded-bl-2xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    closeLoan(loan.id, closureDate, closureNote || undefined);
+                    toast.success("Loan closed successfully.");
+                    setShowClosureModal(false);
+                    setClosureDate(new Date().toISOString().split("T")[0]);
+                    setClosureNote("");
+                  }}
+                  className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-white bg-red-500 hover:bg-red-600 transition-colors rounded-none lg:rounded-br-2xl flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-4 h-4" /> Confirm
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Hidden receipt — movie ticket style */}
       {showReceipt && loan && borrower && (
         <div className="fixed -left-[9999px] top-0">
@@ -996,7 +1115,7 @@ export default function GenerateInterest() {
                       marginBottom: 2,
                     }}
                   >
-                    Total Collected
+                    Total Interest Paid
                   </div>
                   <div
                     style={{

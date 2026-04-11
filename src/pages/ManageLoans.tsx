@@ -269,6 +269,10 @@ export default function ManageLoans() {
   const [loanTicketTarget, setLoanTicketTarget] = useState<Loan | null>(null);
   const loanTicketRef = useRef<HTMLDivElement>(null);
 
+  // Closure summary image
+  const [closureSummaryTarget, setClosureSummaryTarget] = useState<Loan | null>(null);
+  const closureSummaryRef = useRef<HTMLDivElement>(null);
+
   const handleLoanTicket = useCallback(
     async (loan: Loan) => {
       setLoanTicketTarget(loan);
@@ -302,6 +306,189 @@ export default function ManageLoans() {
       }
     },
     [borrowers],
+  );
+
+  const handleClosureSummary = useCallback(
+    async (loan: Loan) => {
+      setClosureSummaryTarget(loan);
+      await new Promise((r) => setTimeout(r, 150));
+      if (!closureSummaryRef.current) return;
+      try {
+        const canvas = await html2canvas(closureSummaryRef.current, {
+          scale: 2,
+          backgroundColor: null,
+        });
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
+        if (!blob) return;
+        const file = new File([blob], `closure-summary-${loan.collateralCode || "summary"}.png`, {
+          type: "image/png",
+        });
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `Closure Summary - ${loan.collateralCode}` });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = file.name;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast.success("Closure summary saved!");
+        }
+      } catch {
+        toast.error("Could not generate summary");
+      } finally {
+        setClosureSummaryTarget(null);
+      }
+    },
+    [borrowers, interests],
+  );
+
+  const handleClosureStatement = useCallback(
+    async (loan: Loan) => {
+      try {
+        const b = borrowers.find((x) => x.id === loan.borrowerId);
+        const history = interests
+          .filter((i) => i.loanId === loan.id)
+          .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
+        const totalCollected = history.reduce((s, h) => s + h.amount, 0);
+
+        const doc = new jsPDF({ unit: "mm", format: "a4" });
+        const pw = doc.internal.pageSize.getWidth();
+        const margin = 16;
+        let y = 20;
+
+        // Header
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, pw, 44, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text("JB FINANCE", margin, y);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text("LOAN CLOSURE STATEMENT", margin, y + 6);
+
+        doc.setFontSize(9);
+        doc.setTextColor(16, 185, 129);
+        doc.text(format(new Date(), "dd MMM yyyy, hh:mm a"), pw - margin, y, { align: "right" });
+
+        y = 34;
+        doc.setTextColor(226, 232, 240);
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        doc.text(b?.fullName || "Unknown", margin, y);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `${loan.collateralCode || "—"}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo  ·  ${loan.collateralType}`,
+          margin,
+          y + 5,
+        );
+
+        y = 52;
+
+        // Loan details row
+        doc.setFillColor(241, 245, 249);
+        doc.rect(margin, y, pw - margin * 2, 12, "F");
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Start: ${format(new Date(loan.startDate), "dd MMM yyyy")}`, margin + 4, y + 5);
+        doc.text(`Closed: ${loan.closedDate ? format(new Date(loan.closedDate), "dd MMM yyyy") : "—"}`, margin + 60, y + 5);
+        doc.text(`Security: ${loan.collateralType}`, pw - margin - 4, y + 5, { align: "right" });
+        if (loan.closureNote) {
+          doc.setFontSize(7);
+          doc.setTextColor(100, 116, 139);
+          doc.text(`Note: ${loan.closureNote}`, margin + 4, y + 10);
+        }
+        y += loan.closureNote ? 18 : 16;
+
+        // Table header
+        doc.setFillColor(241, 245, 249);
+        doc.rect(margin, y, pw - margin * 2, 8, "F");
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.setFont("helvetica", "bold");
+        doc.text("#", margin + 3, y + 5.5);
+        doc.text("PERIOD", margin + 14, y + 5.5);
+        doc.text("AMOUNT", pw - margin - 3, y + 5.5, { align: "right" });
+        y += 10;
+
+        // Rows
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        history.forEach((h, idx) => {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+          const isEven = idx % 2 === 0;
+          if (isEven) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(margin, y - 3, pw - margin * 2, 8, "F");
+          }
+          doc.setTextColor(71, 85, 105);
+          doc.text(`${idx + 1}`, margin + 3, y + 2);
+          doc.text(
+            `${format(addDays(new Date(h.startDate), 1), "dd MMM yy")} → ${format(new Date(h.endDate), "dd MMM yy")}`,
+            margin + 14,
+            y + 2,
+          );
+          doc.setTextColor(15, 23, 42);
+          doc.setFont("helvetica", "bold");
+          doc.text(
+            `₹${h.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+            pw - margin - 3,
+            y + 2,
+            { align: "right" },
+          );
+          doc.setFont("helvetica", "normal");
+          y += 8;
+        });
+
+        // Total bar
+        y += 4;
+        doc.setFillColor(5, 150, 105);
+        doc.roundedRect(margin, y, pw - margin * 2, 14, 3, 3, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "bold");
+        doc.text("TOTAL INTEREST PAID", margin + 5, y + 6);
+        doc.setFontSize(14);
+        doc.text(`₹${totalCollected.toLocaleString("en-IN")}`, margin + 5, y + 12);
+
+        doc.setTextColor(209, 250, 229);
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text("PRINCIPAL", pw - margin - 5, y + 6, { align: "right" });
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(`₹${loan.principal.toLocaleString("en-IN")}`, pw - margin - 5, y + 12, {
+          align: "right",
+        });
+
+        // Return as file
+        const pdfBlob = doc.output("blob");
+        const file = new File([pdfBlob], `closure-statement-${loan.collateralCode || "statement"}.pdf`, {
+          type: "application/pdf",
+        });
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `Closure Statement - ${loan.collateralCode}` });
+        } else {
+          const url = URL.createObjectURL(pdfBlob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = file.name;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast.success("Closure statement saved!");
+        }
+      } catch {
+        toast.error("Could not generate statement");
+      }
+    },
+    [borrowers, interests],
   );
 
   const [quickView, setQuickView] = useState<Loan | null>(null);
@@ -611,21 +798,40 @@ export default function ManageLoans() {
                   className="flex flex-col border-l border-slate-100 dark:border-slate-700/40 shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    onClick={() => void handleLoanTicket(l)}
-                    className="flex-1 px-3 flex items-center justify-center text-violet-500 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
-                    title="Loan Ticket"
-                  >
-                    <Ticket className="w-4 h-4 -rotate-12" />
-                  </button>
-                  {!isClosed && (
-                    <button
-                      onClick={() => openClosureModal(l)}
-                      className="flex-1 px-3 flex items-center justify-center text-red-400 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-slate-100 dark:border-slate-700/40"
-                      title="Close Loan"
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </button>
+                  {isClosed ? (
+                    <>
+                      <button
+                        onClick={() => void handleClosureSummary(l)}
+                        className="flex-1 px-3 flex items-center justify-center text-emerald-500 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                        title="Closure Summary"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => void handleClosureStatement(l)}
+                        className="flex-1 px-3 flex items-center justify-center text-sky-500 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors border-t border-slate-100 dark:border-slate-700/40"
+                        title="Closure Statement"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => void handleLoanTicket(l)}
+                        className="flex-1 px-3 flex items-center justify-center text-violet-500 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                        title="Loan Ticket"
+                      >
+                        <Ticket className="w-4 h-4 -rotate-12" />
+                      </button>
+                      <button
+                        onClick={() => openClosureModal(l)}
+                        className="flex-1 px-3 flex items-center justify-center text-red-400 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-slate-100 dark:border-slate-700/40"
+                        title="Close Loan"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -692,21 +898,29 @@ export default function ManageLoans() {
 
                 {/* Actions row */}
                 <div className="border-t border-slate-100 dark:border-slate-700/40 flex shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => void handleLoanTicket(l)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-violet-700 dark:text-violet-200 bg-violet-100 dark:bg-violet-800/40 hover:bg-violet-200 dark:hover:bg-violet-700/50 transition-colors border-r border-violet-200/50 dark:border-violet-600/30"
-                  >
-                    <Ticket className="w-3.5 h-3.5 -rotate-12" /> Ticket
-                  </button>
                   {isClosed ? (
-                    <Link
-                      to={`/history?loanId=${l.id}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-sky-700 dark:text-sky-200 bg-sky-100 dark:bg-sky-800/40 hover:bg-sky-200 dark:hover:bg-sky-700/50 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5" /> History
-                    </Link>
+                    <>
+                      <button
+                        onClick={() => void handleClosureSummary(l)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-800/40 hover:bg-emerald-200 dark:hover:bg-emerald-700/50 transition-colors border-r border-emerald-200/50 dark:border-emerald-600/30"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Summary
+                      </button>
+                      <button
+                        onClick={() => void handleClosureStatement(l)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-sky-700 dark:text-sky-200 bg-sky-100 dark:bg-sky-800/40 hover:bg-sky-200 dark:hover:bg-sky-700/50 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Statement
+                      </button>
+                    </>
                   ) : (
                     <>
+                      <button
+                        onClick={() => void handleLoanTicket(l)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-violet-700 dark:text-violet-200 bg-violet-100 dark:bg-violet-800/40 hover:bg-violet-200 dark:hover:bg-violet-700/50 transition-colors border-r border-violet-200/50 dark:border-violet-600/30"
+                      >
+                        <Ticket className="w-3.5 h-3.5 -rotate-12" /> Ticket
+                      </button>
                       <Link
                         to={`/interest?loanId=${l.id}`}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-800/40 hover:bg-emerald-200 dark:hover:bg-emerald-700/50 transition-colors border-r border-emerald-200/50 dark:border-emerald-600/30"
@@ -1846,6 +2060,335 @@ export default function ManageLoans() {
                       {format(new Date(), "dd MMM yyyy • hh:mm a")}
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* Hidden closure summary image */}
+      {closureSummaryTarget &&
+        (() => {
+          const csb = borrowers.find((x) => x.id === closureSummaryTarget.borrowerId);
+          const csTotalCollected = interests
+            .filter((i) => i.loanId === closureSummaryTarget.id)
+            .reduce((s, i) => s + i.amount, 0);
+          const csRow = (label: string, value: string) => (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                padding: "9px 0",
+                borderBottom: "1px dashed #e2e8f0",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "#64748b",
+                  textTransform: "uppercase",
+                  letterSpacing: 2,
+                  fontWeight: 600,
+                }}
+              >
+                {label}
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  fontFamily: "monospace",
+                  textAlign: "right",
+                }}
+              >
+                {value}
+              </span>
+            </div>
+          );
+          return (
+            <div className="fixed -left-[9999px] top-0">
+              <div
+                ref={closureSummaryRef}
+                style={{ width: 380, fontFamily: "Inter, system-ui, sans-serif", padding: 16 }}
+              >
+                <div
+                  style={{
+                    background: "#fff",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    boxShadow: "0 2px 20px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  {/* Green accent bar */}
+                  <div
+                    style={{
+                      height: 5,
+                      background: "linear-gradient(90deg, #34d399, #059669, #34d399)",
+                    }}
+                  />
+
+                  {/* Header */}
+                  <div
+                    style={{
+                      padding: "20px 24px 16px",
+                      textAlign: "center",
+                      borderBottom: "2px solid #f1f5f9",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #34d399, #059669)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 10px",
+                        boxShadow: "0 4px 12px rgba(5,150,105,0.25)",
+                      }}
+                    >
+                      <span style={{ color: "#fff", fontWeight: 900, fontSize: 18 }}>₹</span>
+                    </div>
+                    <div
+                      style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", letterSpacing: 1 }}
+                    >
+                      JB FINANCE
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 8,
+                        color: "#059669",
+                        letterSpacing: 4,
+                        textTransform: "uppercase",
+                        fontWeight: 700,
+                        marginTop: 4,
+                        background: "#d1fae5",
+                        display: "inline-block",
+                        padding: "3px 12px",
+                        borderRadius: 20,
+                      }}
+                    >
+                      Loan Closure Summary
+                    </div>
+                  </div>
+
+                  {/* Borrower hero */}
+                  <div
+                    style={{
+                      padding: "16px 24px",
+                      background: "#f0fdf4",
+                      borderBottom: "2px solid #f1f5f9",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 8,
+                        color: "#6b7280",
+                        textTransform: "uppercase",
+                        letterSpacing: 3,
+                        marginBottom: 4,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Borrower
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 20,
+                        fontWeight: 900,
+                        color: "#0f172a",
+                        letterSpacing: -0.5,
+                      }}
+                    >
+                      {csb?.fullName || "Unknown"}
+                    </div>
+                  </div>
+
+                  {/* Detail rows */}
+                  <div style={{ padding: "4px 24px 4px" }}>
+                    {csRow("Ref. No.", closureSummaryTarget.collateralCode || "—")}
+                    {csRow("Principal", `₹${closureSummaryTarget.principal.toLocaleString("en-IN")}`)}
+                    {csRow("Interest", `${closureSummaryTarget.rate}% per month`)}
+                    {csRow(
+                      "Security",
+                      `${closureSummaryTarget.collateralType} · ${closureSummaryTarget.collateralCode || "—"}`,
+                    )}
+                    {csRow("Start Date", format(new Date(closureSummaryTarget.startDate), "dd MMM yyyy"))}
+                    {csRow("Closed Date", closureSummaryTarget.closedDate ? format(new Date(closureSummaryTarget.closedDate), "dd MMM yyyy") : "—")}
+                    {closureSummaryTarget.closureNote && csRow("Note", closureSummaryTarget.closureNote)}
+                  </div>
+
+                  {/* Total Interest Paid */}
+                  <div style={{ padding: "8px 24px 16px" }}>
+                    <div
+                      style={{
+                        background: "linear-gradient(135deg, #059669, #047857)",
+                        borderRadius: 10,
+                        padding: "12px 14px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 7,
+                            color: "#a7f3d0",
+                            textTransform: "uppercase",
+                            letterSpacing: 3,
+                            marginBottom: 2,
+                            fontWeight: 700,
+                          }}
+                        >
+                          Total Interest Paid
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 20,
+                            fontWeight: 900,
+                            color: "#fff",
+                            fontFamily: "monospace",
+                            letterSpacing: -1,
+                          }}
+                        >
+                          ₹{csTotalCollected.toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stamp area */}
+                  <div
+                    style={{
+                      padding: "4px 24px 18px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-end",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 8,
+                        color: "#a8a29e",
+                        letterSpacing: 2,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {format(new Date(), "dd MMM yyyy • hh:mm a")}
+                    </div>
+                    {/* Wavy seal stamp — green */}
+                    <svg
+                      width="74"
+                      height="74"
+                      viewBox="0 0 74 74"
+                      style={{ transform: "rotate(-12deg)" }}
+                    >
+                      <defs>
+                        <clipPath id="wavyClipClosure">
+                          <path
+                            d={(() => {
+                              const cx = 37,
+                                cy = 37,
+                                points = 32,
+                                rOuter = 35,
+                                rInner = 31;
+                              let d = "";
+                              for (let i = 0; i < points; i++) {
+                                const angle = (i / points) * Math.PI * 2;
+                                const r = i % 2 === 0 ? rOuter : rInner;
+                                const x = cx + r * Math.cos(angle);
+                                const y = cy + r * Math.sin(angle);
+                                d += (i === 0 ? "M" : "L") + `${x.toFixed(1)},${y.toFixed(1)}`;
+                              }
+                              return d + "Z";
+                            })()}
+                          />
+                        </clipPath>
+                      </defs>
+                      {/* Wavy outer shape — filled green */}
+                      <path
+                        fill="#059669"
+                        d={(() => {
+                          const cx = 37,
+                            cy = 37,
+                            points = 32,
+                            rOuter = 35,
+                            rInner = 31;
+                          let d = "";
+                          for (let i = 0; i < points; i++) {
+                            const angle = (i / points) * Math.PI * 2;
+                            const r = i % 2 === 0 ? rOuter : rInner;
+                            const x = cx + r * Math.cos(angle);
+                            const y = cy + r * Math.sin(angle);
+                            d += (i === 0 ? "M" : "L") + `${x.toFixed(1)},${y.toFixed(1)}`;
+                          }
+                          return d + "Z";
+                        })()}
+                      />
+                      {/* Inner ring */}
+                      <circle
+                        cx="37"
+                        cy="37"
+                        r="25"
+                        fill="none"
+                        stroke="#d1fae5"
+                        strokeWidth="1.2"
+                        opacity="0.4"
+                      />
+                      {/* Top arc text */}
+                      <path id="csSealTop" d="M 12,37 a 25,25 0 1,1 50,0" fill="none" />
+                      <text
+                        fill="#d1fae5"
+                        fontSize="5.5"
+                        fontWeight="800"
+                        letterSpacing="3"
+                        fontFamily="system-ui,sans-serif"
+                        opacity="0.9"
+                      >
+                        <textPath href="#csSealTop" startOffset="50%" textAnchor="middle">
+                          JB FINANCE
+                        </textPath>
+                      </text>
+                      {/* Bottom arc text */}
+                      <path id="csSealBot" d="M 12,37 a 25,25 0 1,0 50,0" fill="none" />
+                      <text
+                        fill="#d1fae5"
+                        fontSize="5.5"
+                        fontWeight="700"
+                        letterSpacing="2.5"
+                        fontFamily="system-ui,sans-serif"
+                        opacity="0.9"
+                      >
+                        <textPath href="#csSealBot" startOffset="50%" textAnchor="middle">
+                          ★ CLOSED ★
+                        </textPath>
+                      </text>
+                      {/* Center check mark */}
+                      <text
+                        x="37"
+                        y="44"
+                        textAnchor="middle"
+                        fill="#d1fae5"
+                        fontSize="20"
+                        fontWeight="900"
+                        fontFamily="system-ui,sans-serif"
+                      >
+                        ₹
+                      </text>
+                    </svg>
+                  </div>
+
+                  {/* Green accent bar bottom */}
+                  <div
+                    style={{
+                      height: 5,
+                      background: "linear-gradient(90deg, #34d399, #059669, #34d399)",
+                    }}
+                  />
                 </div>
               </div>
             </div>
