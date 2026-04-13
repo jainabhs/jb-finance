@@ -90,7 +90,7 @@
     z-index: 1;
   }
   .tech-button-primary::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
@@ -103,11 +103,18 @@
     pointer-events: none;
   }
   @keyframes btn-sheen {
-    0%, 100% { left: -100%; }
-    50% { left: 150%; }
+    0%,
+    100% {
+      left: -100%;
+    }
+    50% {
+      left: 150%;
+    }
   }
   .tech-button-primary:active {
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), 0 2px 8px rgba(99, 102, 241, 0.3);
+    box-shadow:
+      0 0 0 3px rgba(99, 102, 241, 0.25),
+      0 2px 8px rgba(99, 102, 241, 0.3);
   }
   :is(.dark) .tech-button-primary {
     background: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #818cf8 100%);
@@ -119,7 +126,9 @@
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
   }
   :is(.dark) .tech-button-primary:active {
-    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25), 0 2px 8px rgba(129, 140, 248, 0.25);
+    box-shadow:
+      0 0 0 3px rgba(167, 139, 250, 0.25),
+      0 2px 8px rgba(129, 140, 248, 0.25);
   }
 
   /* Apple Liquid Glass — light mode */

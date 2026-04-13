@@ -32,7 +32,8 @@ const navigation = [
 ];
 
 export function Layout() {
-  const { borrowers, globalBorrowerId, setGlobalBorrowerId, isMockMode, toggleMockMode } = useMockData();
+  const { borrowers, globalBorrowerId, setGlobalBorrowerId, isMockMode, toggleMockMode } =
+    useMockData();
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const { masked, toggleMask } = usePrivacy();
@@ -99,14 +100,16 @@ export function Layout() {
                 >
                   <LogOut className="w-3.5 h-3.5" /> Mock
                 </button>
-              ) : user && (
-                <button
-                  onClick={signOut}
-                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
-                  title={user.email || "Sign out"}
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
+              ) : (
+                user && (
+                  <button
+                    onClick={signOut}
+                    className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
+                    title={user.email || "Sign out"}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                )
               )}
             </div>
           </div>
@@ -147,7 +150,10 @@ export function Layout() {
                       className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl shadow-slate-200/60 dark:shadow-slate-950/60 overflow-hidden max-h-64 overflow-y-auto"
                     >
                       <button
-                        onClick={() => { setGlobalBorrowerId(null); setBorrowerOpen(false); }}
+                        onClick={() => {
+                          setGlobalBorrowerId(null);
+                          setBorrowerOpen(false);
+                        }}
                         className={cn(
                           "w-full text-left px-4 py-2.5 text-xs transition-colors",
                           !globalBorrowerId
@@ -157,11 +163,16 @@ export function Layout() {
                       >
                         All Borrowers
                       </button>
-                      {borrowers.length > 0 && <div className="h-px bg-slate-100 dark:bg-slate-700/50" />}
+                      {borrowers.length > 0 && (
+                        <div className="h-px bg-slate-100 dark:bg-slate-700/50" />
+                      )}
                       {borrowers.map((b) => (
                         <button
                           key={b.id}
-                          onClick={() => { setGlobalBorrowerId(b.id); setBorrowerOpen(false); }}
+                          onClick={() => {
+                            setGlobalBorrowerId(b.id);
+                            setBorrowerOpen(false);
+                          }}
                           className={cn(
                             "w-full text-left px-4 py-2.5 text-xs transition-colors",
                             globalBorrowerId === b.id
@@ -276,14 +287,16 @@ export function Layout() {
                 >
                   <LogOut className="w-3.5 h-3.5" /> Mock
                 </button>
-              ) : user && (
-                <button
-                  onClick={signOut}
-                  className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/15 transition-all text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
-                  title={user.email || "Sign out"}
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
+              ) : (
+                user && (
+                  <button
+                    onClick={signOut}
+                    className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/15 transition-all text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400"
+                    title={user.email || "Sign out"}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                )
               )}
 
               {/* Desktop borrower selector */}

@@ -121,15 +121,77 @@ function interestFromRow(r: any): AppliedInterest {
 }
 // Seed data for mock mode
 const SEED_BORROWERS: Borrower[] = [
-  { id: "B-1001", fullName: "Ramesh Kumar", phone: "9876543210", email: "", createdAt: "2023-06-15T00:00:00Z" },
-  { id: "B-1002", fullName: "Suresh Patel", phone: "9988776655", email: "", createdAt: "2024-01-10T00:00:00Z" },
-  { id: "B-1003", fullName: "Mahesh Sharma", phone: "9112233445", email: "", createdAt: "2024-09-20T00:00:00Z" },
+  {
+    id: "B-1001",
+    fullName: "Ramesh Kumar",
+    phone: "9876543210",
+    email: "",
+    createdAt: "2023-06-15T00:00:00Z",
+  },
+  {
+    id: "B-1002",
+    fullName: "Suresh Patel",
+    phone: "9988776655",
+    email: "",
+    createdAt: "2024-01-10T00:00:00Z",
+  },
+  {
+    id: "B-1003",
+    fullName: "Mahesh Sharma",
+    phone: "9112233445",
+    email: "",
+    createdAt: "2024-09-20T00:00:00Z",
+  },
 ];
 const SEED_LOANS: Loan[] = [
-  { id: "L-2001", borrowerId: "B-1001", principal: 500000, rate: 1.5, startDate: "2023-08-01", status: "active", collateralType: "Gold", collateralCode: "JB-GLD-RK-1", thresholdMonths: 12, lastPaymentDate: "2023-08-01" },
-  { id: "L-2002", borrowerId: "B-1001", principal: 200000, rate: 1, startDate: "2025-10-15", status: "active", collateralType: "Property", collateralCode: "JB-PRP-RK-1", thresholdMonths: 12, lastPaymentDate: "2025-10-15" },
-  { id: "L-2003", borrowerId: "B-1002", principal: 300000, rate: 1.1, startDate: "2024-03-01", status: "active", collateralType: "Gold", collateralCode: "JB-GLD-SP-1", thresholdMonths: 12, lastPaymentDate: "2024-03-01" },
-  { id: "L-2004", borrowerId: "B-1003", principal: 150000, rate: 2, startDate: "2026-01-10", status: "active", collateralType: "Vehicle", collateralCode: "JB-VHC-MS-1", thresholdMonths: 12, lastPaymentDate: "2026-01-10" },
+  {
+    id: "L-2001",
+    borrowerId: "B-1001",
+    principal: 500000,
+    rate: 1.5,
+    startDate: "2023-08-01",
+    status: "active",
+    collateralType: "Gold",
+    collateralCode: "JB-GLD-RK-1",
+    thresholdMonths: 12,
+    lastPaymentDate: "2023-08-01",
+  },
+  {
+    id: "L-2002",
+    borrowerId: "B-1001",
+    principal: 200000,
+    rate: 1,
+    startDate: "2025-10-15",
+    status: "active",
+    collateralType: "Property",
+    collateralCode: "JB-PRP-RK-1",
+    thresholdMonths: 12,
+    lastPaymentDate: "2025-10-15",
+  },
+  {
+    id: "L-2003",
+    borrowerId: "B-1002",
+    principal: 300000,
+    rate: 1.1,
+    startDate: "2024-03-01",
+    status: "active",
+    collateralType: "Gold",
+    collateralCode: "JB-GLD-SP-1",
+    thresholdMonths: 12,
+    lastPaymentDate: "2024-03-01",
+  },
+  {
+    id: "L-2004",
+    borrowerId: "B-1003",
+    principal: 150000,
+    rate: 2,
+    startDate: "2026-01-10",
+    status: "active",
+    collateralType: "Vehicle",
+    collateralCode: "JB-VHC-MS-1",
+    thresholdMonths: 12,
+    lastPaymentDate: "2026-01-10",
+  },
 ];
 
 const MockContext = createContext<MockDataState | null>(null);
@@ -250,281 +312,307 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem("nk_global_borrower");
   }, [globalBorrowerId]);
 
-  const addBorrower = useCallback(async (b: Omit<Borrower, "id" | "createdAt">) => {
-    if (isSupabaseConnected && supabase) {
-      const row = borrowerToRow(b);
-      const { data, error } = await supabase.from("borrowers").insert(row).select().single();
-      if (error) {
-        console.error("Supabase error", error);
-        return;
-      }
-      setBorrowers((prev) => [...prev, borrowerFromRow(data)]);
-    } else {
-      const newBorrower = {
-        ...b,
-        id: `B-${Math.floor(Math.random() * 10000)
-          .toString()
-          .padStart(4, "0")}`,
-        createdAt: new Date().toISOString(),
-      };
-      setBorrowers((prev) => [...prev, newBorrower]);
-    }
-  }, [isSupabaseConnected]);
-
-  const updateBorrower = useCallback(async (
-    id: string,
-    updates: Partial<Omit<Borrower, "id" | "createdAt">>,
-  ) => {
-    if (isSupabaseConnected && supabase) {
-      const row = borrowerToRow(updates);
-      const { error } = await supabase.from("borrowers").update(row).eq("id", id);
-      if (error) {
-        console.error("Supabase error", error);
-        return;
-      }
-    }
-    setBorrowers((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
-  }, [isSupabaseConnected]);
-
-  const addLoan = useCallback(async (l: Omit<Loan, "id" | "createdAt" | "status" | "lastPaymentDate">) => {
-    if (isSupabaseConnected && supabase) {
-      const loanRow = {
-        borrower_id: l.borrowerId,
-        principal_amount: l.principal,
-        interest_rate_monthly: l.rate,
-        start_date: l.startDate,
-        status: "active",
-        compound_threshold_months: l.thresholdMonths,
-      };
-      const { data: loanData, error: lError } = await supabase
-        .from("loans")
-        .insert(loanRow)
-        .select()
-        .single();
-      if (lError) {
-        console.error("Supabase error", lError);
-        return;
-      }
-
-      if (l.collateralCode) {
-        const { error: cError } = await supabase.from("collateral_items").insert({
-          loan_id: loanData.id,
-          item_type: l.collateralType || "Other",
-          alphanumeric_code: l.collateralCode,
-        });
-        if (cError) {
-          console.error("Supabase collateral error", cError);
+  const addBorrower = useCallback(
+    async (b: Omit<Borrower, "id" | "createdAt">) => {
+      if (isSupabaseConnected && supabase) {
+        const row = borrowerToRow(b);
+        const { data, error } = await supabase.from("borrowers").insert(row).select().single();
+        if (error) {
+          console.error("Supabase error", error);
+          return;
         }
+        setBorrowers((prev) => [...prev, borrowerFromRow(data)]);
+      } else {
+        const newBorrower = {
+          ...b,
+          id: `B-${Math.floor(Math.random() * 10000)
+            .toString()
+            .padStart(4, "0")}`,
+          createdAt: new Date().toISOString(),
+        };
+        setBorrowers((prev) => [...prev, newBorrower]);
       }
+    },
+    [isSupabaseConnected],
+  );
 
-      const newLoan: Loan = {
-        ...loanFromRow(loanData),
-        collateralType: l.collateralType,
-        collateralCode: l.collateralCode,
-        lastPaymentDate: loanData.start_date,
-      };
-      setLoans((prev) => [...prev, newLoan]);
-    } else {
-      const newLoan = {
-        ...l,
-        id: `L-${Math.floor(Math.random() * 10000)
-          .toString()
-          .padStart(4, "0")}`,
-        createdAt: new Date().toISOString(),
-        status: "active" as const,
-        lastPaymentDate: l.startDate,
-      };
-      setLoans((prev) => [...prev, newLoan]);
-    }
-  }, [isSupabaseConnected]);
-
-  const addInterest = useCallback(async (i: {
-    loanId: string;
-    startDate: string;
-    endDate: string;
-    amount: number;
-    newPrincipal: number;
-  }) => {
-    // Use functional update to read current loans without needing loans in deps
-    let previousPrincipal = i.newPrincipal;
-    setLoans((prev) => {
-      const loan = prev.find((l) => l.id === i.loanId);
-      previousPrincipal = loan?.principal || i.newPrincipal;
-      return prev;
-    });
-
-    if (isSupabaseConnected && supabase) {
-      const row = {
-        loan_id: i.loanId,
-        period_start: i.startDate,
-        period_end: i.endDate,
-        interest_amount: i.amount,
-      };
-      const { data, error: iError } = await supabase
-        .from("applied_interests")
-        .insert(row)
-        .select()
-        .single();
-      if (iError) {
-        console.error("Supabase error", iError);
-        return;
-      }
-
-      const { error: lError } = await supabase
-        .from("loans")
-        .update({ principal_amount: i.newPrincipal })
-        .eq("id", i.loanId);
-      if (lError) {
-        console.error("Supabase loan update error (interest already inserted)", lError);
-      }
-
-      const newInterest: AppliedInterest = { ...interestFromRow(data), previousPrincipal };
-      setInterests((prev) => [...prev, newInterest]);
-    } else {
-      const newInterest = {
-        id: `I-${Math.floor(Math.random() * 10000)
-          .toString()
-          .padStart(4, "0")}`,
-        loanId: i.loanId,
-        startDate: i.startDate,
-        endDate: i.endDate,
-        amount: i.amount,
-        createdAt: new Date().toISOString(),
-        previousPrincipal,
-      };
-      setInterests((prev) => [...prev, newInterest]);
-    }
-
-    setLoans((prev) =>
-      prev.map((loan) => {
-        if (loan.id === i.loanId) {
-          return { ...loan, principal: i.newPrincipal, lastPaymentDate: i.endDate };
-        }
-        return loan;
-      }),
-    );
-  }, [isSupabaseConnected]);
-
-  const deleteInterest = useCallback(async (id: string) => {
-    // Read the target interest from current state
-    let iTarg: AppliedInterest | undefined;
-    setInterests((prev) => {
-      iTarg = prev.find((i) => i.id === id);
-      return prev;
-    });
-    if (!iTarg) return;
-    const target = iTarg;
-
-    if (isSupabaseConnected && supabase) {
-      const { error: dError } = await supabase.from("applied_interests").delete().eq("id", id);
-      if (dError) {
-        console.error("Supabase error", dError);
-        return;
-      }
-
-      let oldPrin = target.previousPrincipal;
-      if (!oldPrin) {
-        setLoans((prev) => {
-          oldPrin = prev.find((l) => l.id === target.loanId)?.principal;
-          return prev;
-        });
-      }
-      const { error: lError } = await supabase
-        .from("loans")
-        .update({ principal_amount: oldPrin })
-        .eq("id", target.loanId);
-      if (lError) {
-        console.error("Supabase loan update error (interest already deleted)", lError);
-      }
-    }
-
-    setLoans((prev) =>
-      prev.map((l) => {
-        if (l.id === target.loanId) {
-          return {
-            ...l,
-            lastPaymentDate: target.startDate,
-            principal: target.previousPrincipal || l.principal,
-          };
-        }
-        return l;
-      }),
-    );
-    setInterests((prev) => prev.filter((i) => i.id !== id));
-  }, [isSupabaseConnected]);
-
-  const closeLoan = useCallback(async (id: string, closedDate: string, note?: string) => {
-    if (isSupabaseConnected && supabase) {
-      const { error } = await supabase.from("loans").update({ status: "closed" }).eq("id", id);
-      if (error) {
-        console.error("Supabase error", error);
-        return;
-      }
-    }
-    setLoans((prev) =>
-      prev.map((l) => {
-        if (l.id === id) {
-          return { ...l, status: "closed" as const, closedDate, closureNote: note };
-        }
-        return l;
-      }),
-    );
-  }, [isSupabaseConnected]);
-
-  const updateLoan = useCallback(async (
-    id: string,
-    updates: Partial<
-      Pick<
-        Loan,
-        "principal" | "rate" | "collateralType" | "collateralCode" | "startDate" | "thresholdMonths"
-      >
-    >,
-  ) => {
-    if (isSupabaseConnected && supabase) {
-      const row: Record<string, unknown> = {};
-      if (updates.principal !== undefined) row.principal_amount = updates.principal;
-      if (updates.rate !== undefined) row.interest_rate_monthly = updates.rate;
-      if (updates.startDate !== undefined) row.start_date = updates.startDate;
-      if (updates.thresholdMonths !== undefined)
-        row.compound_threshold_months = updates.thresholdMonths;
-      if (Object.keys(row).length > 0) {
-        const { error } = await supabase.from("loans").update(row).eq("id", id);
+  const updateBorrower = useCallback(
+    async (id: string, updates: Partial<Omit<Borrower, "id" | "createdAt">>) => {
+      if (isSupabaseConnected && supabase) {
+        const row = borrowerToRow(updates);
+        const { error } = await supabase.from("borrowers").update(row).eq("id", id);
         if (error) {
           console.error("Supabase error", error);
           return;
         }
       }
-      if (updates.collateralType !== undefined || updates.collateralCode !== undefined) {
-        // Read current loan via functional update to avoid stale closure
-        let currentLoan: Loan | undefined;
-        setLoans((prev) => {
-          currentLoan = prev.find((l) => l.id === id);
-          return prev;
-        });
-        await supabase.from("collateral_items").delete().eq("loan_id", id);
-        await supabase.from("collateral_items").insert({
-          loan_id: id,
-          item_type: updates.collateralType ?? currentLoan?.collateralType ?? "Other",
-          alphanumeric_code: updates.collateralCode ?? currentLoan?.collateralCode ?? "",
-        });
-      }
-    }
-    setLoans((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
-  }, [isSupabaseConnected]);
+      setBorrowers((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    },
+    [isSupabaseConnected],
+  );
 
-  const deleteLoan = useCallback(async (id: string) => {
-    if (isSupabaseConnected && supabase) {
-      await supabase.from("applied_interests").delete().eq("loan_id", id);
-      await supabase.from("collateral_items").delete().eq("loan_id", id);
-      const { error } = await supabase.from("loans").delete().eq("id", id);
-      if (error) {
-        console.error("Supabase error", error);
-        return;
+  const addLoan = useCallback(
+    async (l: Omit<Loan, "id" | "createdAt" | "status" | "lastPaymentDate">) => {
+      if (isSupabaseConnected && supabase) {
+        const loanRow = {
+          borrower_id: l.borrowerId,
+          principal_amount: l.principal,
+          interest_rate_monthly: l.rate,
+          start_date: l.startDate,
+          status: "active",
+          compound_threshold_months: l.thresholdMonths,
+        };
+        const { data: loanData, error: lError } = await supabase
+          .from("loans")
+          .insert(loanRow)
+          .select()
+          .single();
+        if (lError) {
+          console.error("Supabase error", lError);
+          return;
+        }
+
+        if (l.collateralCode) {
+          const { error: cError } = await supabase.from("collateral_items").insert({
+            loan_id: loanData.id,
+            item_type: l.collateralType || "Other",
+            alphanumeric_code: l.collateralCode,
+          });
+          if (cError) {
+            console.error("Supabase collateral error", cError);
+          }
+        }
+
+        const newLoan: Loan = {
+          ...loanFromRow(loanData),
+          collateralType: l.collateralType,
+          collateralCode: l.collateralCode,
+          lastPaymentDate: loanData.start_date,
+        };
+        setLoans((prev) => [...prev, newLoan]);
+      } else {
+        const newLoan = {
+          ...l,
+          id: `L-${Math.floor(Math.random() * 10000)
+            .toString()
+            .padStart(4, "0")}`,
+          createdAt: new Date().toISOString(),
+          status: "active" as const,
+          lastPaymentDate: l.startDate,
+        };
+        setLoans((prev) => [...prev, newLoan]);
       }
-    }
-    setInterests((prev) => prev.filter((i) => i.loanId !== id));
-    setLoans((prev) => prev.filter((l) => l.id !== id));
-  }, [isSupabaseConnected]);
+    },
+    [isSupabaseConnected],
+  );
+
+  const addInterest = useCallback(
+    async (i: {
+      loanId: string;
+      startDate: string;
+      endDate: string;
+      amount: number;
+      newPrincipal: number;
+    }) => {
+      // Use functional update to read current loans without needing loans in deps
+      let previousPrincipal = i.newPrincipal;
+      setLoans((prev) => {
+        const loan = prev.find((l) => l.id === i.loanId);
+        previousPrincipal = loan?.principal || i.newPrincipal;
+        return prev;
+      });
+
+      if (isSupabaseConnected && supabase) {
+        const row = {
+          loan_id: i.loanId,
+          period_start: i.startDate,
+          period_end: i.endDate,
+          interest_amount: i.amount,
+        };
+        const { data, error: iError } = await supabase
+          .from("applied_interests")
+          .insert(row)
+          .select()
+          .single();
+        if (iError) {
+          console.error("Supabase error", iError);
+          return;
+        }
+
+        const { error: lError } = await supabase
+          .from("loans")
+          .update({ principal_amount: i.newPrincipal })
+          .eq("id", i.loanId);
+        if (lError) {
+          console.error("Supabase loan update error (interest already inserted)", lError);
+        }
+
+        const newInterest: AppliedInterest = { ...interestFromRow(data), previousPrincipal };
+        setInterests((prev) => [...prev, newInterest]);
+      } else {
+        const newInterest = {
+          id: `I-${Math.floor(Math.random() * 10000)
+            .toString()
+            .padStart(4, "0")}`,
+          loanId: i.loanId,
+          startDate: i.startDate,
+          endDate: i.endDate,
+          amount: i.amount,
+          createdAt: new Date().toISOString(),
+          previousPrincipal,
+        };
+        setInterests((prev) => [...prev, newInterest]);
+      }
+
+      setLoans((prev) =>
+        prev.map((loan) => {
+          if (loan.id === i.loanId) {
+            return { ...loan, principal: i.newPrincipal, lastPaymentDate: i.endDate };
+          }
+          return loan;
+        }),
+      );
+    },
+    [isSupabaseConnected],
+  );
+
+  const deleteInterest = useCallback(
+    async (id: string) => {
+      // Read the target interest from current state
+      let iTarg: AppliedInterest | undefined;
+      setInterests((prev) => {
+        iTarg = prev.find((i) => i.id === id);
+        return prev;
+      });
+      if (!iTarg) return;
+      const target = iTarg;
+
+      if (isSupabaseConnected && supabase) {
+        const { error: dError } = await supabase.from("applied_interests").delete().eq("id", id);
+        if (dError) {
+          console.error("Supabase error", dError);
+          return;
+        }
+
+        let oldPrin = target.previousPrincipal;
+        if (!oldPrin) {
+          setLoans((prev) => {
+            oldPrin = prev.find((l) => l.id === target.loanId)?.principal;
+            return prev;
+          });
+        }
+        const { error: lError } = await supabase
+          .from("loans")
+          .update({ principal_amount: oldPrin })
+          .eq("id", target.loanId);
+        if (lError) {
+          console.error("Supabase loan update error (interest already deleted)", lError);
+        }
+      }
+
+      setLoans((prev) =>
+        prev.map((l) => {
+          if (l.id === target.loanId) {
+            return {
+              ...l,
+              lastPaymentDate: target.startDate,
+              principal: target.previousPrincipal || l.principal,
+            };
+          }
+          return l;
+        }),
+      );
+      setInterests((prev) => prev.filter((i) => i.id !== id));
+    },
+    [isSupabaseConnected],
+  );
+
+  const closeLoan = useCallback(
+    async (id: string, closedDate: string, note?: string) => {
+      if (isSupabaseConnected && supabase) {
+        const { error } = await supabase.from("loans").update({ status: "closed" }).eq("id", id);
+        if (error) {
+          console.error("Supabase error", error);
+          return;
+        }
+      }
+      setLoans((prev) =>
+        prev.map((l) => {
+          if (l.id === id) {
+            return { ...l, status: "closed" as const, closedDate, closureNote: note };
+          }
+          return l;
+        }),
+      );
+    },
+    [isSupabaseConnected],
+  );
+
+  const updateLoan = useCallback(
+    async (
+      id: string,
+      updates: Partial<
+        Pick<
+          Loan,
+          | "principal"
+          | "rate"
+          | "collateralType"
+          | "collateralCode"
+          | "startDate"
+          | "thresholdMonths"
+        >
+      >,
+    ) => {
+      if (isSupabaseConnected && supabase) {
+        const row: Record<string, unknown> = {};
+        if (updates.principal !== undefined) row.principal_amount = updates.principal;
+        if (updates.rate !== undefined) row.interest_rate_monthly = updates.rate;
+        if (updates.startDate !== undefined) row.start_date = updates.startDate;
+        if (updates.thresholdMonths !== undefined)
+          row.compound_threshold_months = updates.thresholdMonths;
+        if (Object.keys(row).length > 0) {
+          const { error } = await supabase.from("loans").update(row).eq("id", id);
+          if (error) {
+            console.error("Supabase error", error);
+            return;
+          }
+        }
+        if (updates.collateralType !== undefined || updates.collateralCode !== undefined) {
+          // Read current loan via functional update to avoid stale closure
+          let currentLoan: Loan | undefined;
+          setLoans((prev) => {
+            currentLoan = prev.find((l) => l.id === id);
+            return prev;
+          });
+          await supabase.from("collateral_items").delete().eq("loan_id", id);
+          await supabase.from("collateral_items").insert({
+            loan_id: id,
+            item_type: updates.collateralType ?? currentLoan?.collateralType ?? "Other",
+            alphanumeric_code: updates.collateralCode ?? currentLoan?.collateralCode ?? "",
+          });
+        }
+      }
+      setLoans((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+    },
+    [isSupabaseConnected],
+  );
+
+  const deleteLoan = useCallback(
+    async (id: string) => {
+      if (isSupabaseConnected && supabase) {
+        await supabase.from("applied_interests").delete().eq("loan_id", id);
+        await supabase.from("collateral_items").delete().eq("loan_id", id);
+        const { error } = await supabase.from("loans").delete().eq("id", id);
+        if (error) {
+          console.error("Supabase error", error);
+          return;
+        }
+      }
+      setInterests((prev) => prev.filter((i) => i.loanId !== id));
+      setLoans((prev) => prev.filter((l) => l.id !== id));
+    },
+    [isSupabaseConnected],
+  );
 
   const clearWorkspace = useCallback(async () => {
     if (isSupabaseConnected && supabase) {
@@ -548,31 +636,47 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     setInterests([]);
   }, [isSupabaseConnected]);
 
-  const contextValue = useMemo(() => ({
-    borrowers,
-    loans,
-    interests,
-    addBorrower,
-    updateBorrower,
-    addLoan,
-    addInterest,
-    deleteInterest,
-    closeLoan,
-    updateLoan,
-    deleteLoan,
-    clearWorkspace,
-    globalBorrowerId,
-    setGlobalBorrowerId,
-    isSupabaseConnected,
-    isMockMode,
-    toggleMockMode,
-  }), [borrowers, loans, interests, addBorrower, updateBorrower, addLoan, addInterest, deleteInterest, closeLoan, updateLoan, deleteLoan, clearWorkspace, globalBorrowerId, isSupabaseConnected, isMockMode, toggleMockMode]);
-
-  return (
-    <MockContext.Provider value={contextValue}>
-      {children}
-    </MockContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      borrowers,
+      loans,
+      interests,
+      addBorrower,
+      updateBorrower,
+      addLoan,
+      addInterest,
+      deleteInterest,
+      closeLoan,
+      updateLoan,
+      deleteLoan,
+      clearWorkspace,
+      globalBorrowerId,
+      setGlobalBorrowerId,
+      isSupabaseConnected,
+      isMockMode,
+      toggleMockMode,
+    }),
+    [
+      borrowers,
+      loans,
+      interests,
+      addBorrower,
+      updateBorrower,
+      addLoan,
+      addInterest,
+      deleteInterest,
+      closeLoan,
+      updateLoan,
+      deleteLoan,
+      clearWorkspace,
+      globalBorrowerId,
+      isSupabaseConnected,
+      isMockMode,
+      toggleMockMode,
+    ],
   );
+
+  return <MockContext.Provider value={contextValue}>{children}</MockContext.Provider>;
 }
 
 export function useMockData() {
