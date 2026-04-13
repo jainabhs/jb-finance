@@ -45,6 +45,13 @@ export default function ManageLoans() {
   } = useMockData();
   const { m } = usePrivacy();
 
+  // Build borrower lookup map for O(1) access
+  const borrowerMap = useMemo(() => {
+    const map = new Map<string, typeof borrowers[0]>();
+    for (const b of borrowers) map.set(b.id, b);
+    return map;
+  }, [borrowers]);
+
   // Format number with Indian commas as you type
   const fmtNum = (n: number) => (n ? n.toLocaleString("en-IN") : "");
   const parseNum = (s: string) => Number(s.replace(/,/g, "")) || 0;
@@ -570,21 +577,57 @@ export default function ManageLoans() {
     }
   };
 
-  const filtered = loans.filter((l) => {
-    if (l.status !== statusFilter) return false;
-    if (globalBorrowerId && l.borrowerId !== globalBorrowerId) return false;
-    const b = borrowers.find((x) => x.id === l.borrowerId);
-    return `${l.id} ${l.collateralCode} ${b?.fullName || ""}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-  });
+  const filtered = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return loans.filter((l) => {
+      if (l.status !== statusFilter) return false;
+      if (globalBorrowerId && l.borrowerId !== globalBorrowerId) return false;
+      const b = borrowerMap.get(l.borrowerId);
+      return `${l.id} ${l.collateralCode} ${b?.fullName || ""}`
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [loans, statusFilter, globalBorrowerId, searchQuery, borrowerMap]);
 
-  const activeCount = loans.filter(
-    (l) => (!globalBorrowerId || l.borrowerId === globalBorrowerId) && l.status === "active",
-  ).length;
-  const closedCount = loans.filter(
-    (l) => (!globalBorrowerId || l.borrowerId === globalBorrowerId) && l.status === "closed",
-  ).length;
+  const { activeCount, closedCount } = useMemo(() => {
+    let active = 0, closed = 0;
+    for (const l of loans) {
+      if (globalBorrowerId && l.borrowerId !== globalBorrowerId) continue;
+      if (l.status === "active") active++;
+      else if (l.status === "closed") closed++;
+    }
+    return { activeCount: active, closedCount: closed };
+  }, [loans, globalBorrowerId]);
+
+  // Pre-compute pending interest for all filtered active loans (avoid per-card calculateCompoundInterest in render)
+  const pendingInterestMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const now = new Date();
+    for (const l of filtered) {
+      if (l.status !== "active") continue;
+      const lastPayment = new Date(l.lastPaymentDate);
+      if (now <= lastPayment) continue;
+      const months = differenceInMonths(now, lastPayment);
+      if (months <= 0) continue;
+      map.set(l.id, calculateCompoundInterest(
+        l.principal,
+        l.rate,
+        lastPayment,
+        now,
+        Math.max(1, l.thresholdMonths),
+      ).totalInterest);
+    }
+    return map;
+  }, [filtered]);
+
+  // Pre-aggregate total earned per loan for closed loans
+  const earnedByLoan = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const i of interests) {
+      map.set(i.loanId, (map.get(i.loanId) || 0) + i.amount);
+    }
+    return map;
+  }, [interests]);
 
   const closureCalc = useMemo(() => {
     if (!closureTarget) return null;
@@ -703,24 +746,13 @@ export default function ManageLoans() {
         className="flex flex-col gap-2 md:gap-3"
       >
         {filtered.map((l, index) => {
-          const b = borrowers.find((x) => x.id === l.borrowerId);
+          const b = borrowerMap.get(l.borrowerId);
           const isClosed = l.status === "closed";
-          const totalEarned = isClosed
-            ? interests.filter((i) => i.loanId === l.id).reduce((s, i) => s + i.amount, 0)
-            : 0;
+          const totalEarned = isClosed ? (earnedByLoan.get(l.id) || 0) : 0;
           const overdueMonths = !isClosed
             ? differenceInMonths(new Date(), new Date(l.lastPaymentDate))
             : 0;
-          const pendingInterest =
-            !isClosed && overdueMonths > 0
-              ? calculateCompoundInterest(
-                  l.principal,
-                  l.rate,
-                  new Date(l.lastPaymentDate),
-                  new Date(),
-                  Math.max(1, l.thresholdMonths),
-                ).totalInterest
-              : 0;
+          const pendingInterest = pendingInterestMap.get(l.id) || 0;
           const loanAgeMonths = differenceInMonths(new Date(), new Date(l.startDate));
           const agingColor = isClosed
             ? "bg-slate-300 dark:bg-slate-600"
@@ -733,7 +765,7 @@ export default function ManageLoans() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.3 }}
+              transition={{ delay: Math.min(index * 0.05, 0.5), duration: 0.3 }}
               key={l.id}
               className={`bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-xl relative overflow-hidden transition-all cursor-pointer ${isClosed ? "opacity-75" : ""}`}
               onClick={() => setQuickView(l)}
@@ -1179,7 +1211,7 @@ export default function ManageLoans() {
                     </h3>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono tracking-wider truncate">
                       {closureTarget.collateralCode || "—"} —{" "}
-                      {borrowers.find((b) => b.id === closureTarget.borrowerId)?.fullName}
+                      {borrowerMap.get(closureTarget.borrowerId)?.fullName}
                     </p>
                   </div>
                 </div>
@@ -1274,7 +1306,7 @@ export default function ManageLoans() {
       <AnimatePresence>
         {quickView &&
           (() => {
-            const qb = borrowers.find((x) => x.id === quickView.borrowerId);
+            const qb = borrowerMap.get(quickView.borrowerId);
             const qClosed = quickView.status === "closed";
             const qOverdue = !qClosed
               ? differenceInMonths(new Date(), new Date(quickView.lastPaymentDate))
@@ -1289,9 +1321,7 @@ export default function ManageLoans() {
                     Math.max(1, quickView.thresholdMonths),
                   )
                 : null;
-            const qEarned = interests
-              .filter((i) => i.loanId === quickView.id)
-              .reduce((s, i) => s + i.amount, 0);
+            const qEarned = earnedByLoan.get(quickView.id) || 0;
             return (
               <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:justify-center items-center lg:p-4">
                 <motion.div
@@ -1723,7 +1753,7 @@ export default function ManageLoans() {
       {/* Hidden pending interest ticket for image share */}
       {shareTarget &&
         (() => {
-          const sb = borrowers.find((x) => x.id === shareTarget.borrowerId);
+          const sb = borrowerMap.get(shareTarget.borrowerId);
           const sOverdue = differenceInMonths(new Date(), new Date(shareTarget.lastPaymentDate));
           const sCalc = calculateCompoundInterest(
             shareTarget.principal,
@@ -2069,7 +2099,7 @@ export default function ManageLoans() {
       {/* Hidden closure summary image */}
       {closureSummaryTarget &&
         (() => {
-          const csb = borrowers.find((x) => x.id === closureSummaryTarget.borrowerId);
+          const csb = borrowerMap.get(closureSummaryTarget.borrowerId);
           const csTotalCollected = interests
             .filter((i) => i.loanId === closureSummaryTarget.id)
             .reduce((s, i) => s + i.amount, 0);
@@ -2398,7 +2428,7 @@ export default function ManageLoans() {
       {/* Hidden loan acknowledgment slip */}
       {loanTicketTarget &&
         (() => {
-          const tb = borrowers.find((x) => x.id === loanTicketTarget.borrowerId);
+          const tb = borrowerMap.get(loanTicketTarget.borrowerId);
           const row = (label: string, value: string) => (
             <div
               style={{

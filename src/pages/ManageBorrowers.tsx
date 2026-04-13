@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, Plus, Phone, Mail, ShieldCheck, Edit3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMockData } from "../lib/MockContext";
@@ -45,10 +45,40 @@ export default function ManageBorrowers() {
     setNewB({ fullName: b.fullName, phone: b.phone, email: b.email || "" });
     setShowModal(true);
   };
-  const filtered = borrowers.filter(
-    (b) =>
-      b.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || b.phone.includes(searchQuery),
-  );
+  const filtered = useMemo(() =>
+    borrowers.filter(
+      (b) =>
+        b.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || b.phone.includes(searchQuery),
+    ),
+  [borrowers, searchQuery]);
+
+  // Pre-compute per-borrower stats
+  const borrowerStats = useMemo(() => {
+    // Group interests by loanId
+    const interestByLoan = new Map<string, number>();
+    for (const i of interests) {
+      interestByLoan.set(i.loanId, (interestByLoan.get(i.loanId) || 0) + i.amount);
+    }
+    // Group loans by borrowerId
+    const stats = new Map<string, { activeCount: number; principalOut: number; totalEarned: number; pendingInterest: number }>();
+    const now = new Date();
+    for (const l of loans) {
+      const existing = stats.get(l.borrowerId) || { activeCount: 0, principalOut: 0, totalEarned: 0, pendingInterest: 0 };
+      existing.totalEarned += interestByLoan.get(l.id) || 0;
+      if (l.status === "active") {
+        existing.activeCount++;
+        existing.principalOut += l.principal;
+        const start = new Date(l.lastPaymentDate);
+        if (now > start) {
+          existing.pendingInterest += calculateCompoundInterest(
+            l.principal, l.rate, start, now, Math.max(1, l.thresholdMonths),
+          ).totalInterest;
+        }
+      }
+      stats.set(l.borrowerId, existing);
+    }
+    return stats;
+  }, [loans, interests]);
 
   const inputCls =
     "block w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg py-2.5 px-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/30 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500";
@@ -88,31 +118,8 @@ export default function ManageBorrowers() {
       {/* List */}
       <div className="space-y-2.5">
         {filtered.map((b, index) => {
-          const borrowerLoans = loans.filter((l) => l.borrowerId === b.id);
-          const activeCount = borrowerLoans.filter((l) => l.status === "active").length;
-          const principalOut = borrowerLoans
-            .filter((l) => l.status === "active")
-            .reduce((s, l) => s + l.principal, 0);
-          const totalEarned = interests
-            .filter((i) => borrowerLoans.some((l) => l.id === i.loanId))
-            .reduce((s, i) => s + i.amount, 0);
-          const pendingInterest = borrowerLoans
-            .filter((l) => l.status === "active")
-            .reduce((s, l) => {
-              const start = new Date(l.lastPaymentDate);
-              const now = new Date();
-              if (now <= start) return s;
-              return (
-                s +
-                calculateCompoundInterest(
-                  l.principal,
-                  l.rate,
-                  start,
-                  now,
-                  Math.max(1, l.thresholdMonths),
-                ).totalInterest
-              );
-            }, 0);
+          const s = borrowerStats.get(b.id) || { activeCount: 0, principalOut: 0, totalEarned: 0, pendingInterest: 0 };
+          const { activeCount, principalOut, totalEarned, pendingInterest } = s;
           const initials = b.fullName
             .split(" ")
             .map((w) => w[0])
@@ -124,7 +131,7 @@ export default function ManageBorrowers() {
               key={b.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03, duration: 0.25 }}
+              transition={{ delay: Math.min(index * 0.03, 0.5), duration: 0.25 }}
               className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/50 rounded-xl p-3.5 sm:p-4 flex items-center gap-3 hover:shadow-md dark:hover:shadow-slate-950/30 transition-all"
             >
               {/* Avatar */}

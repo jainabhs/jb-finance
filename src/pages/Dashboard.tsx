@@ -1,12 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Wallet,
   CheckCircle2,
   ArrowUpRight,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { useMockData } from "../lib/MockContext";
 import { usePrivacy } from "../lib/PrivacyContext";
 
@@ -14,32 +14,58 @@ import { usePrivacy } from "../lib/PrivacyContext";
 export default function Dashboard() {
   const { loans, borrowers, interests } = useMockData();
   const { m } = usePrivacy();
-  const activeLoans = loans.filter((l) => l.status === "active");
-  const totalPrincipal = activeLoans.reduce((s, l) => s + l.principal, 0);
-  const recentInterests = useMemo(
-    () =>
-      [...interests]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 5),
-    [interests],
-  );
+  const [activityPopover, setActivityPopover] = useState<string | null>(null);
+
+  // Build lookup maps for O(1) access
+  const borrowerMap = useMemo(() => {
+    const map = new Map<string, typeof borrowers[0]>();
+    for (const b of borrowers) map.set(b.id, b);
+    return map;
+  }, [borrowers]);
+
+  // Pre-aggregate interest earned per loan
+  const interestByLoan = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const i of interests) {
+      map.set(i.loanId, (map.get(i.loanId) || 0) + i.amount);
+    }
+    return map;
+  }, [interests]);
+
+  const activeLoans = useMemo(() => loans.filter((l) => l.status === "active"), [loans]);
+  const totalPrincipal = useMemo(() => activeLoans.reduce((s, l) => s + l.principal, 0), [activeLoans]);
+  // Group recent activity by loan, sorted by most recent entry per group
+  const recentActivityGroups = useMemo(() => {
+    const byLoan = new Map<string, typeof interests>();
+    for (const i of interests) {
+      const arr = byLoan.get(i.loanId) || [];
+      arr.push(i);
+      byLoan.set(i.loanId, arr);
+    }
+    // Sort entries within each group (newest first), then sort groups by their latest entry
+    const groups = [...byLoan.entries()].map(([loanId, entries]) => ({
+      loanId,
+      entries: entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      latestAt: Math.max(...entries.map((e) => new Date(e.createdAt).getTime())),
+    }));
+    return groups.sort((a, b) => b.latestAt - a.latestAt).slice(0, 5);
+  }, [interests]);
 
   // Portfolio: principal outstanding per borrower + earned
   const portfolio = useMemo(() => {
     const map = new Map<string, { name: string; principal: number; loanCount: number; earned: number }>();
     for (const l of activeLoans) {
-      const b = borrowers.find((x) => x.id === l.borrowerId);
-      const name = b?.fullName || "Unknown";
+      const name = borrowerMap.get(l.borrowerId)?.fullName || "Unknown";
       const existing = map.get(l.borrowerId) || { name, principal: 0, loanCount: 0, earned: 0 };
       existing.principal += l.principal;
       existing.loanCount += 1;
-      existing.earned += interests.filter((i) => i.loanId === l.id).reduce((s, i) => s + i.amount, 0);
+      existing.earned += interestByLoan.get(l.id) || 0;
       map.set(l.borrowerId, existing);
     }
-    return [...map.values()].sort((a, b) => b.principal - a.principal).slice(0, 5);
-  }, [activeLoans, borrowers, interests]);
+    return [...map.values()].sort((a, b) => b.principal - a.principal);
+  }, [activeLoans, borrowerMap, interestByLoan]);
 
-  const monthlyEarning = activeLoans.reduce((s, l) => s + (l.principal * l.rate / 100), 0);
+  const monthlyEarning = useMemo(() => activeLoans.reduce((s, l) => s + (l.principal * l.rate / 100), 0), [activeLoans]);
   const effectiveRate = totalPrincipal > 0 ? (monthlyEarning / totalPrincipal) * 100 : 0;
 
   // Capital by interest rate
@@ -322,27 +348,97 @@ export default function Dashboard() {
             <ArrowUpRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-sky-500 transition-colors" />
           </Link>
           <div className="space-y-1">
-            {recentInterests.map((interest) => {
-              const loan = loans.find((l) => l.id === interest.loanId);
-              const borrower = borrowers.find((b) => b.id === loan?.borrowerId);
+            {recentActivityGroups.map((group) => {
+              const loan = loans.find((l) => l.id === group.loanId);
+              const borrower = loan ? borrowerMap.get(loan.borrowerId) : undefined;
+              const groupTotal = group.entries.reduce((s, e) => s + e.amount, 0);
               return (
-                <div key={interest.id} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700/30 last:border-0">
+                <button
+                  key={group.loanId}
+                  type="button"
+                  onClick={() => setActivityPopover(activityPopover === group.loanId ? null : group.loanId)}
+                  className="w-full flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700/30 last:border-0 text-left hover:bg-slate-50/50 dark:hover:bg-slate-700/20 -mx-1 px-1 rounded transition-colors"
+                >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{borrower?.fullName || "Unknown"}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                      {loan?.collateralCode || "—"} · {new Date(interest.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    <p className="text-sm font-black font-mono text-slate-900 dark:text-white truncate">{loan?.collateralCode || "—"}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                      {borrower?.fullName || "Unknown"} · <span className="font-mono font-semibold text-slate-500 dark:text-slate-400">{group.entries.length}</span> record{group.entries.length !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono ml-3 shrink-0">+{m(interest.amount)}</span>
-                </div>
+                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono ml-3 shrink-0">+{m(groupTotal)}</span>
+                </button>
               );
             })}
-            {recentInterests.length === 0 && (
+            {recentActivityGroups.length === 0 && (
               <div className="py-6 text-center">
                 <p className="text-xs text-slate-400 dark:text-slate-500">No collections recorded yet</p>
               </div>
             )}
           </div>
+
+          {/* Activity popover */}
+          <AnimatePresence>
+            {activityPopover && (() => {
+              const group = recentActivityGroups.find((g) => g.loanId === activityPopover);
+              if (!group) return null;
+              const loan = loans.find((l) => l.id === group.loanId);
+              const borrower = loan ? borrowerMap.get(loan.borrowerId) : undefined;
+              return (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+                    onClick={() => setActivityPopover(null)}
+                  />
+                  <motion.div
+                    initial={{ y: "100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: "100%", opacity: 0 }}
+                    transition={{ type: "spring", damping: 28, stiffness: 220 }}
+                    className="relative w-full sm:max-w-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-2xl sm:rounded-2xl shadow-2xl safe-area-bottom max-h-[70vh] flex flex-col overflow-hidden"
+                  >
+                    <div className="sm:hidden w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
+                    {/* Header */}
+                    <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-black font-mono text-slate-900 dark:text-white">{loan?.collateralCode || "—"}</p>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500">{borrower?.fullName || "Unknown"} · {loan?.rate}%/mo</p>
+                        </div>
+                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                          +{m(group.entries.reduce((s, e) => s + e.amount, 0))}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Entries */}
+                    <div className="overflow-y-auto flex-1 px-4 py-2">
+                      <div className="space-y-0.5">
+                        {group.entries.map((interest) => (
+                          <div key={interest.id} className="flex items-center justify-between py-1.5">
+                            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                              {format(addDays(new Date(interest.startDate), 1), "dd MMM")} → {format(new Date(interest.endDate), "dd MMM yy")}
+                            </div>
+                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono ml-3 shrink-0">+{m(interest.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Footer */}
+                    <div className="border-t border-slate-100 dark:border-slate-700/50 shrink-0">
+                      <button
+                        onClick={() => setActivityPopover(null)}
+                        className="w-full py-3 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors sm:rounded-b-2xl"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              );
+            })()}
+          </AnimatePresence>
         </div>
 
         {recentLoans.length > 0 && (
@@ -353,7 +449,7 @@ export default function Dashboard() {
             </Link>
             <div className="space-y-1">
               {recentLoans.map((l) => {
-                const b = borrowers.find((x) => x.id === l.borrowerId);
+                const b = borrowerMap.get(l.borrowerId);
                 return (
                   <div key={l.id} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700/30 last:border-0">
                     <div className="min-w-0 flex-1">

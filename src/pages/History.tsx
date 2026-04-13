@@ -23,6 +23,18 @@ import { lockScroll } from "../lib/utils";
 export default function History() {
   const { loans, borrowers, interests, globalBorrowerId, deleteInterest } = useMockData();
   const { m } = usePrivacy();
+
+  // Lookup maps for O(1) access
+  const borrowerMap = useMemo(() => {
+    const map = new Map<string, typeof borrowers[0]>();
+    for (const b of borrowers) map.set(b.id, b);
+    return map;
+  }, [borrowers]);
+  const loanMap = useMemo(() => {
+    const map = new Map<string, typeof loans[0]>();
+    for (const l of loans) map.set(l.id, l);
+    return map;
+  }, [loans]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialLoanId = searchParams.get("loanId") || "";
@@ -38,7 +50,7 @@ export default function History() {
   const [expandedLoans, setExpandedLoans] = useState<Set<string>>(new Set());
 
   // When linked directly via ?loanId=, derive the borrower from the loan
-  const linkedLoan = initialLoanId ? loans.find((l) => l.id === initialLoanId) : null;
+  const linkedLoan = initialLoanId ? loanMap.get(initialLoanId) ?? null : null;
   const effectiveBorrowerId = globalBorrowerId || linkedLoan?.borrowerId || null;
 
   const toggleLoanExpanded = (loanId: string) => {
@@ -50,7 +62,7 @@ export default function History() {
     });
   };
 
-  const globalBorrower = borrowers.find((b) => b.id === effectiveBorrowerId);
+  const globalBorrower = effectiveBorrowerId ? borrowerMap.get(effectiveBorrowerId) : undefined;
 
   const contextLoans = useMemo(() => {
     if (effectiveBorrowerId) return loans.filter((l) => l.borrowerId === effectiveBorrowerId);
@@ -64,8 +76,8 @@ export default function History() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter((i) => {
-        const loan = loans.find((l) => l.id === i.loanId);
-        const borrower = loan ? borrowers.find((b) => b.id === loan.borrowerId) : null;
+        const loan = loanMap.get(i.loanId);
+        const borrower = loan ? borrowerMap.get(loan.borrowerId) : undefined;
         return (
           i.loanId.toLowerCase().includes(q) ||
           borrower?.fullName.toLowerCase().includes(q) ||
@@ -74,7 +86,7 @@ export default function History() {
       });
     }
     return filtered.sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
-  }, [interests, contextLoans, selectedLoanId, searchQuery, loans, borrowers]);
+  }, [interests, contextLoans, selectedLoanId, searchQuery, loanMap, borrowerMap]);
 
   const totalCollected = useMemo(
     () => allHistory.reduce((sum, h) => sum + h.amount, 0),
@@ -117,8 +129,8 @@ export default function History() {
     if (allHistory.length === 0) return;
     const rows = [["Collateral ID", "Borrower", "Period Start", "Period End", "Amount", "Logged"]];
     for (const h of allHistory) {
-      const loan = loans.find((l) => l.id === h.loanId);
-      const borrower = loan ? borrowers.find((b) => b.id === loan.borrowerId) : null;
+      const loan = loanMap.get(h.loanId);
+      const borrower = loan ? borrowerMap.get(loan.borrowerId) : undefined;
       rows.push([
         loan?.collateralCode || "—",
         borrower?.fullName || "Unknown",
@@ -177,7 +189,7 @@ export default function History() {
             options={[
               { value: "", label: "All Loans" },
               ...contextLoans.map((l) => {
-                const b = borrowers.find((x) => x.id === l.borrowerId);
+                const b = borrowerMap.get(l.borrowerId);
                 return {
                   value: l.id,
                   label: `${l.collateralCode || "—"} · ${b?.fullName || "Unknown"} · ₹${l.principal.toLocaleString("en-IN")}${l.status === "closed" ? " (Closed)" : ""}`,
@@ -216,8 +228,8 @@ export default function History() {
             >
               {/* Loan context */}
               {(() => {
-                const loan = loans.find((l) => l.id === selectedLoanId);
-                const borrower = loan ? borrowers.find((b) => b.id === loan.borrowerId) : null;
+                const loan = loanMap.get(selectedLoanId);
+                const borrower = loan ? borrowerMap.get(loan.borrowerId) : undefined;
                 const isClosed = loan?.status === "closed";
                 return loan ? (
                   <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500">
@@ -237,14 +249,14 @@ export default function History() {
                 <div className="space-y-0.5">
                   {allHistory.map((h, idx) => {
                     const isLatest = latestPerLoan.get(h.loanId) === h.id;
-                    const loan = loans.find((l) => l.id === h.loanId);
+                    const loan = loanMap.get(h.loanId);
                     const isClosed = loan?.status === "closed";
                     return (
                       <motion.div
                         key={h.id}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.03, duration: 0.25 }}
+                        transition={{ delay: Math.min(idx * 0.03, 0.5), duration: 0.25 }}
                         className="relative flex gap-3 sm:gap-4 group py-2 sm:py-2.5 hover:bg-sky-50/30 dark:hover:bg-sky-950/10 rounded-lg px-1 transition-colors"
                       >
                         <div className="relative z-10 shrink-0 mt-1.5 sm:mt-2">
@@ -294,8 +306,8 @@ export default function History() {
             >
               {groupedByLoan &&
                 Array.from(groupedByLoan.entries()).map(([loanId, entries], groupIdx) => {
-                  const loan = loans.find((l) => l.id === loanId);
-                  const borrower = loan ? borrowers.find((b) => b.id === loan.borrowerId) : null;
+                  const loan = loanMap.get(loanId);
+                  const borrower = loan ? borrowerMap.get(loan.borrowerId) : undefined;
                   const isClosed = loan?.status === "closed";
                   const loanTotal = entries.reduce((sum, e) => sum + e.amount, 0);
                   const isExpanded = expandedLoans.has(loanId);
@@ -304,7 +316,7 @@ export default function History() {
                       key={loanId}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: groupIdx * 0.04, duration: 0.25 }}
+                      transition={{ delay: Math.min(groupIdx * 0.04, 0.5), duration: 0.25 }}
                       className="rounded-xl border border-gray-200/80 dark:border-slate-700/50 bg-white dark:bg-slate-800/60 overflow-hidden"
                     >
                       {/* Row — mobile opens sheet, desktop toggles accordion */}
@@ -463,8 +475,8 @@ export default function History() {
       {/* ══════ Mobile Bottom Sheet for Grouped View ══════ */}
       <AnimatePresence>
         {mobileSheetLoanId && (() => {
-          const sheetLoan = loans.find((l) => l.id === mobileSheetLoanId);
-          const sheetBorrower = sheetLoan ? borrowers.find((b) => b.id === sheetLoan.borrowerId) : null;
+          const sheetLoan = loanMap.get(mobileSheetLoanId);
+          const sheetBorrower = sheetLoan ? borrowerMap.get(sheetLoan.borrowerId) : undefined;
           const sheetIsClosed = sheetLoan?.status === "closed";
           const sheetEntries = interests
             .filter((i) => i.loanId === mobileSheetLoanId)

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "./supabase";
 import { useAuth } from "./AuthContext";
 
@@ -250,7 +250,7 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem("nk_global_borrower");
   }, [globalBorrowerId]);
 
-  const addBorrower = async (b: Omit<Borrower, "id" | "createdAt">) => {
+  const addBorrower = useCallback(async (b: Omit<Borrower, "id" | "createdAt">) => {
     if (isSupabaseConnected && supabase) {
       const row = borrowerToRow(b);
       const { data, error } = await supabase.from("borrowers").insert(row).select().single();
@@ -269,9 +269,9 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
       };
       setBorrowers((prev) => [...prev, newBorrower]);
     }
-  };
+  }, [isSupabaseConnected]);
 
-  const updateBorrower = async (
+  const updateBorrower = useCallback(async (
     id: string,
     updates: Partial<Omit<Borrower, "id" | "createdAt">>,
   ) => {
@@ -284,9 +284,9 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
       }
     }
     setBorrowers((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
-  };
+  }, [isSupabaseConnected]);
 
-  const addLoan = async (l: Omit<Loan, "id" | "createdAt" | "status" | "lastPaymentDate">) => {
+  const addLoan = useCallback(async (l: Omit<Loan, "id" | "createdAt" | "status" | "lastPaymentDate">) => {
     if (isSupabaseConnected && supabase) {
       const loanRow = {
         borrower_id: l.borrowerId,
@@ -336,17 +336,22 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
       };
       setLoans((prev) => [...prev, newLoan]);
     }
-  };
+  }, [isSupabaseConnected]);
 
-  const addInterest = async (i: {
+  const addInterest = useCallback(async (i: {
     loanId: string;
     startDate: string;
     endDate: string;
     amount: number;
     newPrincipal: number;
   }) => {
-    const loan = loans.find((l) => l.id === i.loanId);
-    const previousPrincipal = loan?.principal || i.newPrincipal;
+    // Use functional update to read current loans without needing loans in deps
+    let previousPrincipal = i.newPrincipal;
+    setLoans((prev) => {
+      const loan = prev.find((l) => l.id === i.loanId);
+      previousPrincipal = loan?.principal || i.newPrincipal;
+      return prev;
+    });
 
     if (isSupabaseConnected && supabase) {
       const row = {
@@ -398,11 +403,17 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         return loan;
       }),
     );
-  };
+  }, [isSupabaseConnected]);
 
-  const deleteInterest = async (id: string) => {
-    const iTarg = interests.find((i) => i.id === id);
+  const deleteInterest = useCallback(async (id: string) => {
+    // Read the target interest from current state
+    let iTarg: AppliedInterest | undefined;
+    setInterests((prev) => {
+      iTarg = prev.find((i) => i.id === id);
+      return prev;
+    });
     if (!iTarg) return;
+    const target = iTarg;
 
     if (isSupabaseConnected && supabase) {
       const { error: dError } = await supabase.from("applied_interests").delete().eq("id", id);
@@ -411,12 +422,17 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const oldPrin =
-        iTarg.previousPrincipal || loans.find((l) => l.id === iTarg.loanId)?.principal;
+      let oldPrin = target.previousPrincipal;
+      if (!oldPrin) {
+        setLoans((prev) => {
+          oldPrin = prev.find((l) => l.id === target.loanId)?.principal;
+          return prev;
+        });
+      }
       const { error: lError } = await supabase
         .from("loans")
         .update({ principal_amount: oldPrin })
-        .eq("id", iTarg.loanId);
+        .eq("id", target.loanId);
       if (lError) {
         console.error("Supabase loan update error (interest already deleted)", lError);
       }
@@ -424,20 +440,20 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
 
     setLoans((prev) =>
       prev.map((l) => {
-        if (l.id === iTarg.loanId) {
+        if (l.id === target.loanId) {
           return {
             ...l,
-            lastPaymentDate: iTarg.startDate,
-            principal: iTarg.previousPrincipal || l.principal,
+            lastPaymentDate: target.startDate,
+            principal: target.previousPrincipal || l.principal,
           };
         }
         return l;
       }),
     );
     setInterests((prev) => prev.filter((i) => i.id !== id));
-  };
+  }, [isSupabaseConnected]);
 
-  const closeLoan = async (id: string, closedDate: string, note?: string) => {
+  const closeLoan = useCallback(async (id: string, closedDate: string, note?: string) => {
     if (isSupabaseConnected && supabase) {
       const { error } = await supabase.from("loans").update({ status: "closed" }).eq("id", id);
       if (error) {
@@ -453,9 +469,9 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         return l;
       }),
     );
-  };
+  }, [isSupabaseConnected]);
 
-  const updateLoan = async (
+  const updateLoan = useCallback(async (
     id: string,
     updates: Partial<
       Pick<
@@ -479,19 +495,24 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
         }
       }
       if (updates.collateralType !== undefined || updates.collateralCode !== undefined) {
-        const loan = loans.find((l) => l.id === id);
+        // Read current loan via functional update to avoid stale closure
+        let currentLoan: Loan | undefined;
+        setLoans((prev) => {
+          currentLoan = prev.find((l) => l.id === id);
+          return prev;
+        });
         await supabase.from("collateral_items").delete().eq("loan_id", id);
         await supabase.from("collateral_items").insert({
           loan_id: id,
-          item_type: updates.collateralType ?? loan?.collateralType ?? "Other",
-          alphanumeric_code: updates.collateralCode ?? loan?.collateralCode ?? "",
+          item_type: updates.collateralType ?? currentLoan?.collateralType ?? "Other",
+          alphanumeric_code: updates.collateralCode ?? currentLoan?.collateralCode ?? "",
         });
       }
     }
     setLoans((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
-  };
+  }, [isSupabaseConnected]);
 
-  const deleteLoan = async (id: string) => {
+  const deleteLoan = useCallback(async (id: string) => {
     if (isSupabaseConnected && supabase) {
       await supabase.from("applied_interests").delete().eq("loan_id", id);
       await supabase.from("collateral_items").delete().eq("loan_id", id);
@@ -503,9 +524,9 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     }
     setInterests((prev) => prev.filter((i) => i.loanId !== id));
     setLoans((prev) => prev.filter((l) => l.id !== id));
-  };
+  }, [isSupabaseConnected]);
 
-  const clearWorkspace = async () => {
+  const clearWorkspace = useCallback(async () => {
     if (isSupabaseConnected && supabase) {
       await supabase
         .from("applied_interests")
@@ -525,30 +546,30 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
     setBorrowers([]);
     setLoans([]);
     setInterests([]);
-  };
+  }, [isSupabaseConnected]);
+
+  const contextValue = useMemo(() => ({
+    borrowers,
+    loans,
+    interests,
+    addBorrower,
+    updateBorrower,
+    addLoan,
+    addInterest,
+    deleteInterest,
+    closeLoan,
+    updateLoan,
+    deleteLoan,
+    clearWorkspace,
+    globalBorrowerId,
+    setGlobalBorrowerId,
+    isSupabaseConnected,
+    isMockMode,
+    toggleMockMode,
+  }), [borrowers, loans, interests, addBorrower, updateBorrower, addLoan, addInterest, deleteInterest, closeLoan, updateLoan, deleteLoan, clearWorkspace, globalBorrowerId, isSupabaseConnected, isMockMode, toggleMockMode]);
 
   return (
-    <MockContext.Provider
-      value={{
-        borrowers,
-        loans,
-        interests,
-        addBorrower,
-        updateBorrower,
-        addLoan,
-        addInterest,
-        deleteInterest,
-        closeLoan,
-        updateLoan,
-        deleteLoan,
-        clearWorkspace,
-        globalBorrowerId,
-        setGlobalBorrowerId,
-        isSupabaseConnected,
-        isMockMode,
-        toggleMockMode,
-      }}
-    >
+    <MockContext.Provider value={contextValue}>
       {children}
     </MockContext.Provider>
   );
