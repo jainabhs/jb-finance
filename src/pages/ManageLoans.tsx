@@ -47,7 +47,7 @@ export default function ManageLoans() {
 
   // Build borrower lookup map for O(1) access
   const borrowerMap = useMemo(() => {
-    const map = new Map<string, typeof borrowers[0]>();
+    const map = new Map<string, (typeof borrowers)[0]>();
     for (const b of borrowers) map.set(b.id, b);
     return map;
   }, [borrowers]);
@@ -86,6 +86,7 @@ export default function ManageLoans() {
         new Date(loan.lastPaymentDate),
         new Date(),
         Math.max(1, loan.thresholdMonths),
+        !interests.some((i) => i.loanId === loan.id),
       );
       if (calc.periods.length === 0) return null;
       const totalEarned = interests
@@ -140,7 +141,7 @@ export default function ManageLoans() {
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
         doc.text(
-          `${loan.collateralCode || "—"}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo`,
+          `${loan.collateralCode || "-"}  |  Rs.${loan.principal.toLocaleString("en-IN")}  |  ${loan.rate}%/mo`,
           margin,
           y + 5,
         );
@@ -175,19 +176,19 @@ export default function ManageLoans() {
           doc.setTextColor(71, 85, 105);
           doc.text(`${idx + 1}`, margin + 3, y + 2);
           doc.text(
-            `${format(addDays(p.startDate, 1), "dd MMM yy")} → ${format(p.endDate, "dd MMM yy")}   ${p.label}`,
+            `${format(addDays(p.startDate, 1), "dd MMM yy")} - ${format(p.endDate, "dd MMM yy")}   ${p.label}`,
             margin + 14,
             y + 2,
           );
           doc.text(
-            `₹${p.principalAtTime.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+            `Rs.${p.principalAtTime.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
             margin + 80,
             y + 2,
           );
           doc.setTextColor(15, 23, 42);
           doc.setFont("helvetica", "bold");
           doc.text(
-            `₹${p.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+            `Rs.${p.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
             pw - margin - 3,
             y + 2,
             { align: "right" },
@@ -206,7 +207,11 @@ export default function ManageLoans() {
         doc.setTextColor(245, 158, 11);
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text(`₹${Math.round(calc.totalInterest).toLocaleString("en-IN")}`, margin + 5, y + 12);
+        doc.text(
+          `Rs.${Math.round(calc.totalInterest).toLocaleString("en-IN")}`,
+          margin + 5,
+          y + 12,
+        );
 
         doc.setTextColor(148, 163, 184);
         doc.setFontSize(7);
@@ -215,7 +220,7 @@ export default function ManageLoans() {
         doc.setTextColor(16, 185, 129);
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.text(`₹${totalEarned.toLocaleString("en-IN")}`, pw - margin - 5, y + 12, {
+        doc.text(`Rs.${totalEarned.toLocaleString("en-IN")}`, pw - margin - 5, y + 12, {
           align: "right",
         });
 
@@ -331,7 +336,10 @@ export default function ManageLoans() {
           type: "image/png",
         });
         if (navigator.share && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: `Closure Summary - ${loan.collateralCode}` });
+          await navigator.share({
+            files: [file],
+            title: `Closure Summary - ${loan.collateralCode}`,
+          });
         } else {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -387,7 +395,7 @@ export default function ManageLoans() {
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
         doc.text(
-          `${loan.collateralCode || "—"}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo  ·  ${loan.collateralType}`,
+          `${loan.collateralCode || "-"}  |  Rs.${loan.principal.toLocaleString("en-IN")}  |  ${loan.rate}%/mo  |  ${loan.collateralType}`,
           margin,
           y + 5,
         );
@@ -401,7 +409,11 @@ export default function ManageLoans() {
         doc.setTextColor(100, 116, 139);
         doc.setFont("helvetica", "normal");
         doc.text(`Start: ${format(new Date(loan.startDate), "dd MMM yyyy")}`, margin + 4, y + 5);
-        doc.text(`Closed: ${loan.closedDate ? format(new Date(loan.closedDate), "dd MMM yyyy") : "—"}`, margin + 60, y + 5);
+        doc.text(
+          `Closed: ${loan.closedDate ? format(new Date(loan.closedDate), "dd MMM yyyy") : "-"}`,
+          margin + 60,
+          y + 5,
+        );
         doc.text(`Security: ${loan.collateralType}`, pw - margin - 4, y + 5, { align: "right" });
         if (loan.closureNote) {
           doc.setFontSize(7);
@@ -437,14 +449,14 @@ export default function ManageLoans() {
           doc.setTextColor(71, 85, 105);
           doc.text(`${idx + 1}`, margin + 3, y + 2);
           doc.text(
-            `${format(addDays(new Date(h.startDate), 1), "dd MMM yy")} → ${format(new Date(h.endDate), "dd MMM yy")}`,
+            `${format(addDays(new Date(h.startDate), 1), "dd MMM yy")} - ${format(new Date(h.endDate), "dd MMM yy")}`,
             margin + 14,
             y + 2,
           );
           doc.setTextColor(15, 23, 42);
           doc.setFont("helvetica", "bold");
           doc.text(
-            `₹${h.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+            `Rs.${h.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
             pw - margin - 3,
             y + 2,
             { align: "right" },
@@ -462,7 +474,7 @@ export default function ManageLoans() {
         doc.setFont("helvetica", "bold");
         doc.text("TOTAL INTEREST PAID", margin + 5, y + 6);
         doc.setFontSize(14);
-        doc.text(`₹${totalCollected.toLocaleString("en-IN")}`, margin + 5, y + 12);
+        doc.text(`Rs.${totalCollected.toLocaleString("en-IN")}`, margin + 5, y + 12);
 
         doc.setTextColor(209, 250, 229);
         doc.setFontSize(7);
@@ -471,17 +483,24 @@ export default function ManageLoans() {
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.text(`₹${loan.principal.toLocaleString("en-IN")}`, pw - margin - 5, y + 12, {
+        doc.text(`Rs.${loan.principal.toLocaleString("en-IN")}`, pw - margin - 5, y + 12, {
           align: "right",
         });
 
         // Return as file
         const pdfBlob = doc.output("blob");
-        const file = new File([pdfBlob], `closure-statement-${loan.collateralCode || "statement"}.pdf`, {
-          type: "application/pdf",
-        });
+        const file = new File(
+          [pdfBlob],
+          `closure-statement-${loan.collateralCode || "statement"}.pdf`,
+          {
+            type: "application/pdf",
+          },
+        );
         if (navigator.share && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: `Closure Statement - ${loan.collateralCode}` });
+          await navigator.share({
+            files: [file],
+            title: `Closure Statement - ${loan.collateralCode}`,
+          });
         } else {
           const url = URL.createObjectURL(pdfBlob);
           const a = document.createElement("a");
@@ -583,14 +602,13 @@ export default function ManageLoans() {
       if (l.status !== statusFilter) return false;
       if (globalBorrowerId && l.borrowerId !== globalBorrowerId) return false;
       const b = borrowerMap.get(l.borrowerId);
-      return `${l.id} ${l.collateralCode} ${b?.fullName || ""}`
-        .toLowerCase()
-        .includes(q);
+      return `${l.id} ${l.collateralCode} ${b?.fullName || ""}`.toLowerCase().includes(q);
     });
   }, [loans, statusFilter, globalBorrowerId, searchQuery, borrowerMap]);
 
   const { activeCount, closedCount } = useMemo(() => {
-    let active = 0, closed = 0;
+    let active = 0,
+      closed = 0;
     for (const l of loans) {
       if (globalBorrowerId && l.borrowerId !== globalBorrowerId) continue;
       if (l.status === "active") active++;
@@ -602,6 +620,7 @@ export default function ManageLoans() {
   // Pre-compute pending interest for all filtered active loans (avoid per-card calculateCompoundInterest in render)
   const pendingInterestMap = useMemo(() => {
     const map = new Map<string, number>();
+    const loansWithHistory = new Set(interests.map((i) => i.loanId));
     const now = new Date();
     for (const l of filtered) {
       if (l.status !== "active") continue;
@@ -609,16 +628,20 @@ export default function ManageLoans() {
       if (now <= lastPayment) continue;
       const months = differenceInMonths(now, lastPayment);
       if (months <= 0) continue;
-      map.set(l.id, calculateCompoundInterest(
-        l.principal,
-        l.rate,
-        lastPayment,
-        now,
-        Math.max(1, l.thresholdMonths),
-      ).totalInterest);
+      map.set(
+        l.id,
+        calculateCompoundInterest(
+          l.principal,
+          l.rate,
+          lastPayment,
+          now,
+          Math.max(1, l.thresholdMonths),
+          !loansWithHistory.has(l.id),
+        ).totalInterest,
+      );
     }
     return map;
-  }, [filtered]);
+  }, [filtered, interests]);
 
   // Pre-aggregate total earned per loan for closed loans
   const earnedByLoan = useMemo(() => {
@@ -647,6 +670,7 @@ export default function ManageLoans() {
       lastPayment,
       closeDateObj,
       Math.max(1, closureTarget.thresholdMonths),
+      !interests.some((i) => i.loanId === closureTarget.id),
     );
     const totalCollected = interests
       .filter((i) => i.loanId === closureTarget.id)
@@ -748,7 +772,7 @@ export default function ManageLoans() {
         {filtered.map((l, index) => {
           const b = borrowerMap.get(l.borrowerId);
           const isClosed = l.status === "closed";
-          const totalEarned = isClosed ? (earnedByLoan.get(l.id) || 0) : 0;
+          const totalEarned = isClosed ? earnedByLoan.get(l.id) || 0 : 0;
           const overdueMonths = !isClosed
             ? differenceInMonths(new Date(), new Date(l.lastPaymentDate))
             : 0;
@@ -872,13 +896,17 @@ export default function ManageLoans() {
               <div className="hidden lg:flex flex-col group">
                 {/* Data row */}
                 <div className="flex items-center px-4 lg:px-5 py-3 min-w-0">
-                  <div className={`w-1.5 self-stretch shrink-0 rounded-full ${agingColor} mr-3 lg:mr-4`} />
+                  <div
+                    className={`w-1.5 self-stretch shrink-0 rounded-full ${agingColor} mr-3 lg:mr-4`}
+                  />
 
                   {/* Identity */}
                   <div className="flex items-center gap-2.5 min-w-0 w-1/4 shrink-0">
                     {getCollateralIcon(l.collateralType)}
                     <div className="min-w-0">
-                      <span className={`text-sm lg:text-base font-black font-mono text-slate-900 dark:text-white leading-none block truncate transition-colors ${!isClosed ? "group-hover:text-blue-600 dark:group-hover:text-sky-400" : ""}`}>
+                      <span
+                        className={`text-sm lg:text-base font-black font-mono text-slate-900 dark:text-white leading-none block truncate transition-colors ${!isClosed ? "group-hover:text-blue-600 dark:group-hover:text-sky-400" : ""}`}
+                      >
                         {l.collateralCode || "—"}
                       </span>
                       <span className="text-[11px] lg:text-xs text-slate-500 dark:text-slate-400 truncate block mt-0.5">
@@ -889,27 +917,43 @@ export default function ManageLoans() {
 
                   {/* Principal */}
                   <div className="w-1/5 min-w-0">
-                    <span className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold block">Principal</span>
-                    <span className="text-sm lg:text-lg font-black text-slate-900 dark:text-white font-mono leading-none mt-0.5 block truncate">{m(l.principal)}</span>
+                    <span className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold block">
+                      Principal
+                    </span>
+                    <span className="text-sm lg:text-lg font-black text-slate-900 dark:text-white font-mono leading-none mt-0.5 block truncate">
+                      {m(l.principal)}
+                    </span>
                   </div>
 
                   {/* Rate */}
                   <div className="w-16 lg:w-20 shrink-0">
-                    <span className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold block">Rate</span>
-                    <span className="text-sm lg:text-lg font-black text-sky-600 dark:text-sky-400 font-mono leading-none mt-0.5 block">{l.rate}%</span>
+                    <span className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold block">
+                      Rate
+                    </span>
+                    <span className="text-sm lg:text-lg font-black text-sky-600 dark:text-sky-400 font-mono leading-none mt-0.5 block">
+                      {l.rate}%
+                    </span>
                   </div>
 
                   {/* Pending / Earned — lg only */}
                   {pendingInterest > 0 && (
                     <div className="hidden lg:block w-1/5 min-w-0">
-                      <span className="text-[10px] text-amber-600 dark:text-amber-400 uppercase tracking-wider font-bold block">Pending</span>
-                      <span className="text-lg font-black text-amber-700 dark:text-amber-300 font-mono leading-none mt-0.5 block truncate">{m(pendingInterest, { decimals: 0 })}</span>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 uppercase tracking-wider font-bold block">
+                        Pending
+                      </span>
+                      <span className="text-lg font-black text-amber-700 dark:text-amber-300 font-mono leading-none mt-0.5 block truncate">
+                        {m(pendingInterest, { decimals: 0 })}
+                      </span>
                     </div>
                   )}
                   {isClosed && totalEarned > 0 && (
                     <div className="hidden lg:block w-1/5 min-w-0">
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-bold block">Earned</span>
-                      <span className="text-lg font-black text-emerald-700 dark:text-emerald-300 font-mono leading-none mt-0.5 block truncate">{m(totalEarned)}</span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-bold block">
+                        Earned
+                      </span>
+                      <span className="text-lg font-black text-emerald-700 dark:text-emerald-300 font-mono leading-none mt-0.5 block truncate">
+                        {m(totalEarned)}
+                      </span>
                     </div>
                   )}
 
@@ -921,7 +965,9 @@ export default function ManageLoans() {
                       </span>
                     )}
                     {overdueMonths > 0 && (
-                      <span className={`text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${overdueMonths >= 6 ? "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400" : "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"}`}>
+                      <span
+                        className={`text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${overdueMonths >= 6 ? "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400" : "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"}`}
+                      >
                         {overdueMonths}mo
                       </span>
                     )}
@@ -929,7 +975,10 @@ export default function ManageLoans() {
                 </div>
 
                 {/* Actions row */}
-                <div className="border-t border-slate-100 dark:border-slate-700/40 flex shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="border-t border-slate-100 dark:border-slate-700/40 flex shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {isClosed ? (
                     <>
                       <button
@@ -1219,9 +1268,24 @@ export default function ManageLoans() {
                 {/* Settlement Summary */}
                 <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                   <div className="flex items-center gap-x-4 gap-y-0.5 flex-wrap text-[11px] text-slate-400 dark:text-slate-500">
-                    <span>Started <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{format(new Date(closureTarget.startDate), "dd MMM yy")}</span></span>
-                    <span>Principal <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(closureTarget.principal)}</span></span>
-                    <span>Collected <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{m(closureCalc?.totalCollected || 0)}</span></span>
+                    <span>
+                      Started{" "}
+                      <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">
+                        {format(new Date(closureTarget.startDate), "dd MMM yy")}
+                      </span>
+                    </span>
+                    <span>
+                      Principal{" "}
+                      <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">
+                        {m(closureTarget.principal)}
+                      </span>
+                    </span>
+                    <span>
+                      Collected{" "}
+                      <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">
+                        {m(closureCalc?.totalCollected || 0)}
+                      </span>
+                    </span>
                   </div>
 
                   {closureCalc?.valid && (
@@ -1319,6 +1383,7 @@ export default function ManageLoans() {
                     new Date(quickView.lastPaymentDate),
                     new Date(),
                     Math.max(1, quickView.thresholdMonths),
+                    !interests.some((i) => i.loanId === quickView.id),
                   )
                 : null;
             const qEarned = earnedByLoan.get(quickView.id) || 0;
@@ -1399,12 +1464,20 @@ export default function ManageLoans() {
                       <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-sky-500/5 -translate-y-8 translate-x-8" />
                       <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full bg-sky-500/5 translate-y-6 -translate-x-6" />
                       <div className="relative">
-                        <div className="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold mb-1">Principal</div>
-                        <div className="text-2xl font-black text-white font-mono tracking-tight leading-none">{m(quickView.principal)}</div>
+                        <div className="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold mb-1">
+                          Principal
+                        </div>
+                        <div className="text-2xl font-black text-white font-mono tracking-tight leading-none">
+                          {m(quickView.principal)}
+                        </div>
                         <div className="mt-2.5 flex items-center gap-2">
-                          <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded">{quickView.rate}%/mo</span>
+                          <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded">
+                            {quickView.rate}%/mo
+                          </span>
                           <span className="text-[10px] text-slate-500">·</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{format(new Date(quickView.startDate), "dd MMM yyyy")}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {format(new Date(quickView.startDate), "dd MMM yyyy")}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1413,7 +1486,8 @@ export default function ManageLoans() {
                     {(() => {
                       const qPending = qCalc?.totalInterest || 0;
                       const totalYield = qEarned + qPending;
-                      const yieldPct = quickView.principal > 0 ? (totalYield / quickView.principal) * 100 : 0;
+                      const yieldPct =
+                        quickView.principal > 0 ? (totalYield / quickView.principal) * 100 : 0;
                       return (
                         <div className="mb-4 rounded-xl overflow-hidden">
                           {/* Ticket top */}
@@ -1421,12 +1495,16 @@ export default function ManageLoans() {
                             <div className="space-y-1.5">
                               <div className="flex items-center justify-between">
                                 <span className="text-[11px] text-emerald-300/80">Collected</span>
-                                <span className="text-xs font-bold text-emerald-100 font-mono">{m(qEarned)}</span>
+                                <span className="text-xs font-bold text-emerald-100 font-mono">
+                                  {m(qEarned)}
+                                </span>
                               </div>
                               {qPending > 0 && (
                                 <div className="flex items-center justify-between">
                                   <span className="text-[11px] text-amber-300/80">Pending</span>
-                                  <span className="text-xs font-bold text-amber-200 font-mono">{m(qPending, { decimals: 0 })}</span>
+                                  <span className="text-xs font-bold text-amber-200 font-mono">
+                                    {m(qPending, { decimals: 0 })}
+                                  </span>
                                 </div>
                               )}
                             </div>
@@ -1440,12 +1518,20 @@ export default function ManageLoans() {
                           {/* Ticket stub */}
                           <div className="bg-emerald-900 dark:bg-emerald-950 px-4 py-3 flex items-center justify-between">
                             <div>
-                              <span className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-[0.15em] block">Total</span>
-                              <span className="text-lg font-black text-white font-mono tracking-tight">{m(totalYield, { decimals: 0 })}</span>
+                              <span className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-[0.15em] block">
+                                Total
+                              </span>
+                              <span className="text-lg font-black text-white font-mono tracking-tight">
+                                {m(totalYield, { decimals: 0 })}
+                              </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-[0.15em] block">Return</span>
-                              <span className="text-lg font-black text-emerald-300 font-mono">{yieldPct.toFixed(1)}%</span>
+                              <span className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-[0.15em] block">
+                                Return
+                              </span>
+                              <span className="text-lg font-black text-emerald-300 font-mono">
+                                {yieldPct.toFixed(1)}%
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -1642,7 +1728,8 @@ export default function ManageLoans() {
                         value={editForm.rate}
                         onChange={(e) => {
                           const v = e.target.value;
-                          if (v === "" || /^\d*\.?\d*$/.test(v)) setEditForm({ ...editForm, rate: v });
+                          if (v === "" || /^\d*\.?\d*$/.test(v))
+                            setEditForm({ ...editForm, rate: v });
                         }}
                         className={inputCls}
                       />
@@ -1761,6 +1848,7 @@ export default function ManageLoans() {
             new Date(shareTarget.lastPaymentDate),
             new Date(),
             Math.max(1, shareTarget.thresholdMonths),
+            !interests.some((i) => i.loanId === shareTarget.id),
           );
           return (
             <div className="fixed -left-[9999px] top-0">
@@ -1996,7 +2084,8 @@ export default function ManageLoans() {
                         </div>
                         <div>
                           <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace" }}>
-                            {format(addDays(p.startDate, 1), "dd MMM yy")} → {format(p.endDate, "dd MMM yy")}
+                            {format(addDays(p.startDate, 1), "dd MMM yy")} →{" "}
+                            {format(p.endDate, "dd MMM yy")}
                           </div>
                           <div style={{ fontSize: 8, color: "#94a3b8" }}>
                             {p.label} · Base: ₹{p.principalAtTime.toLocaleString("en-IN")}
@@ -2240,15 +2329,27 @@ export default function ManageLoans() {
                   {/* Detail rows */}
                   <div style={{ padding: "4px 24px 4px" }}>
                     {csRow("Ref. No.", closureSummaryTarget.collateralCode || "—")}
-                    {csRow("Principal", `₹${closureSummaryTarget.principal.toLocaleString("en-IN")}`)}
+                    {csRow(
+                      "Principal",
+                      `₹${closureSummaryTarget.principal.toLocaleString("en-IN")}`,
+                    )}
                     {csRow("Interest", `${closureSummaryTarget.rate}% per month`)}
                     {csRow(
                       "Security",
                       `${closureSummaryTarget.collateralType} · ${closureSummaryTarget.collateralCode || "—"}`,
                     )}
-                    {csRow("Start Date", format(new Date(closureSummaryTarget.startDate), "dd MMM yyyy"))}
-                    {csRow("Closed Date", closureSummaryTarget.closedDate ? format(new Date(closureSummaryTarget.closedDate), "dd MMM yyyy") : "—")}
-                    {closureSummaryTarget.closureNote && csRow("Note", closureSummaryTarget.closureNote)}
+                    {csRow(
+                      "Start Date",
+                      format(new Date(closureSummaryTarget.startDate), "dd MMM yyyy"),
+                    )}
+                    {csRow(
+                      "Closed Date",
+                      closureSummaryTarget.closedDate
+                        ? format(new Date(closureSummaryTarget.closedDate), "dd MMM yyyy")
+                        : "—",
+                    )}
+                    {closureSummaryTarget.closureNote &&
+                      csRow("Note", closureSummaryTarget.closureNote)}
                   </div>
 
                   {/* Total Interest Paid */}

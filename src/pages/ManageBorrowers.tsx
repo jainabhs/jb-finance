@@ -45,12 +45,15 @@ export default function ManageBorrowers() {
     setNewB({ fullName: b.fullName, phone: b.phone, email: b.email || "" });
     setShowModal(true);
   };
-  const filtered = useMemo(() =>
-    borrowers.filter(
-      (b) =>
-        b.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || b.phone.includes(searchQuery),
-    ),
-  [borrowers, searchQuery]);
+  const filtered = useMemo(
+    () =>
+      borrowers.filter(
+        (b) =>
+          b.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          b.phone.includes(searchQuery),
+      ),
+    [borrowers, searchQuery],
+  );
 
   // Pre-compute per-borrower stats
   const borrowerStats = useMemo(() => {
@@ -60,10 +63,19 @@ export default function ManageBorrowers() {
       interestByLoan.set(i.loanId, (interestByLoan.get(i.loanId) || 0) + i.amount);
     }
     // Group loans by borrowerId
-    const stats = new Map<string, { activeCount: number; principalOut: number; totalEarned: number; pendingInterest: number }>();
+    const stats = new Map<
+      string,
+      { activeCount: number; principalOut: number; totalEarned: number; pendingInterest: number }
+    >();
+    const loansWithHistory = new Set(interests.map((i) => i.loanId));
     const now = new Date();
     for (const l of loans) {
-      const existing = stats.get(l.borrowerId) || { activeCount: 0, principalOut: 0, totalEarned: 0, pendingInterest: 0 };
+      const existing = stats.get(l.borrowerId) || {
+        activeCount: 0,
+        principalOut: 0,
+        totalEarned: 0,
+        pendingInterest: 0,
+      };
       existing.totalEarned += interestByLoan.get(l.id) || 0;
       if (l.status === "active") {
         existing.activeCount++;
@@ -71,7 +83,12 @@ export default function ManageBorrowers() {
         const start = new Date(l.lastPaymentDate);
         if (now > start) {
           existing.pendingInterest += calculateCompoundInterest(
-            l.principal, l.rate, start, now, Math.max(1, l.thresholdMonths),
+            l.principal,
+            l.rate,
+            start,
+            now,
+            Math.max(1, l.thresholdMonths),
+            !loansWithHistory.has(l.id),
           ).totalInterest;
         }
       }
@@ -118,7 +135,12 @@ export default function ManageBorrowers() {
       {/* List */}
       <div className="space-y-2.5">
         {filtered.map((b, index) => {
-          const s = borrowerStats.get(b.id) || { activeCount: 0, principalOut: 0, totalEarned: 0, pendingInterest: 0 };
+          const s = borrowerStats.get(b.id) || {
+            activeCount: 0,
+            principalOut: 0,
+            totalEarned: 0,
+            pendingInterest: 0,
+          };
           const { activeCount, principalOut, totalEarned, pendingInterest } = s;
           const initials = b.fullName
             .split(" ")

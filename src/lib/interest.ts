@@ -27,6 +27,7 @@ export function calculateCompoundInterest(
   startDate: Date,
   endDate: Date,
   thresholdMonths: number = 12,
+  isFirstInterest: boolean = false,
 ) {
   let currentPrincipal = initialPrincipal;
   let currentDate = startOfDay(startDate);
@@ -78,9 +79,9 @@ export function calculateCompoundInterest(
       // Partial days remaining
       const days = differenceInDays(finalDate, currentDate);
       const monthlyAmount = currentPrincipal * (monthlyRatePct / 100);
-      // First month rule: half month if ≤15 days, full month if >15 days
+      // First month rule: half month if ≤15 days, full month if >15 days (only for loan's very first interest)
       const amount =
-        monthsAccumulated === 0
+        monthsAccumulated === 0 && isFirstInterest
           ? days <= 15
             ? monthlyAmount / 2
             : monthlyAmount

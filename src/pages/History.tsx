@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { calculateCompoundInterest } from "../lib/interest";
 import { useMockData } from "../lib/MockContext";
 import { useSearchParams } from "react-router-dom";
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInDays, differenceInMonths } from "date-fns";
 import { Select } from "../components/ui/Select";
 import toast from "react-hot-toast";
 import { usePrivacy } from "../lib/PrivacyContext";
@@ -26,12 +26,12 @@ export default function History() {
 
   // Lookup maps for O(1) access
   const borrowerMap = useMemo(() => {
-    const map = new Map<string, typeof borrowers[0]>();
+    const map = new Map<string, (typeof borrowers)[0]>();
     for (const b of borrowers) map.set(b.id, b);
     return map;
   }, [borrowers]);
   const loanMap = useMemo(() => {
-    const map = new Map<string, typeof loans[0]>();
+    const map = new Map<string, (typeof loans)[0]>();
     for (const l of loans) map.set(l.id, l);
     return map;
   }, [loans]);
@@ -50,7 +50,7 @@ export default function History() {
   const [expandedLoans, setExpandedLoans] = useState<Set<string>>(new Set());
 
   // When linked directly via ?loanId=, derive the borrower from the loan
-  const linkedLoan = initialLoanId ? loanMap.get(initialLoanId) ?? null : null;
+  const linkedLoan = initialLoanId ? (loanMap.get(initialLoanId) ?? null) : null;
   const effectiveBorrowerId = globalBorrowerId || linkedLoan?.borrowerId || null;
 
   const toggleLoanExpanded = (loanId: string) => {
@@ -176,9 +176,24 @@ export default function History() {
 
       {/* ══════ Stats + Filters ══════ */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500">
-        <span>Collected <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{m(totalCollected)}</span></span>
-        <span><span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{allHistory.length}</span> records</span>
-        <span><span className="font-mono font-semibold text-violet-600 dark:text-violet-400">{uniqueLoanCount}</span> loans</span>
+        <span>
+          Collected{" "}
+          <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+            {m(totalCollected)}
+          </span>
+        </span>
+        <span>
+          <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">
+            {allHistory.length}
+          </span>{" "}
+          records
+        </span>
+        <span>
+          <span className="font-mono font-semibold text-violet-600 dark:text-violet-400">
+            {uniqueLoanCount}
+          </span>{" "}
+          loans
+        </span>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
@@ -233,11 +248,21 @@ export default function History() {
                 const isClosed = loan?.status === "closed";
                 return loan ? (
                   <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500">
-                    <span className="text-sm font-black font-mono text-slate-900 dark:text-white">{loan.collateralCode || "—"}</span>
-                    {isClosed && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">CLOSED</span>}
+                    <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
+                      {loan.collateralCode || "—"}
+                    </span>
+                    {isClosed && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                        CLOSED
+                      </span>
+                    )}
                     <span>{borrower?.fullName}</span>
-                    <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(loan.principal)}</span>
-                    <span className="font-semibold text-sky-600 dark:text-sky-400">{loan.rate}%/mo</span>
+                    <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">
+                      {m(loan.principal)}
+                    </span>
+                    <span className="font-semibold text-sky-600 dark:text-sky-400">
+                      {loan.rate}%/mo
+                    </span>
                   </div>
                 ) : null;
               })()}
@@ -268,10 +293,26 @@ export default function History() {
                         <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
                           <div className="min-w-0">
                             <div className="text-[11px] sm:text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                              {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                              {format(addDays(new Date(h.startDate), 1), "dd MMM")} →{" "}
+                              {format(new Date(h.endDate), "dd MMM yy")}
                             </div>
                             <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                              {new Date(h.createdAt).toLocaleDateString()}
+                              {(() => {
+                                const d = differenceInDays(
+                                  new Date(h.endDate),
+                                  new Date(h.startDate),
+                                );
+                                const isPartial =
+                                  differenceInMonths(new Date(h.endDate), new Date(h.startDate)) <
+                                  1;
+                                const perDay = isPartial ? h.amount / d : h.amount / 30;
+                                return (
+                                  <>
+                                    {isPartial && <>{d}d · </>}
+                                    {m(perDay)}/day · {new Date(h.createdAt).toLocaleDateString()}
+                                  </>
+                                );
+                              })()}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -351,20 +392,65 @@ export default function History() {
                               </span>
                             </div>
                             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">
-                              {isExpanded
-                                ? (() => {
-                                    const unpaid = loan && loan.status === "active" ? (() => {
-                                      const start = new Date(loan.lastPaymentDate);
-                                      const now = new Date();
-                                      if (now <= start) return 0;
-                                      return calculateCompoundInterest(loan.principal, loan.rate, start, now, Math.max(1, loan.thresholdMonths)).totalInterest;
-                                    })() : 0;
-                                    const totalYield = loanTotal + unpaid;
-                                    const yieldPct = (loan?.principal ?? 0) > 0 ? (totalYield / (loan?.principal ?? 1)) * 100 : 0;
-                                    return <>{borrower?.fullName} · <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(loan?.principal ?? 0)}</span> · <span className="text-sky-600 dark:text-sky-400">{loan?.rate}%/mo</span> · Collected <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{m(loanTotal)}</span>{unpaid > 0 && <> · Unpaid <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">{m(unpaid, { decimals: 0 })}</span></>} · Yield <span className="font-mono font-semibold text-violet-600 dark:text-violet-400">{yieldPct.toFixed(1)}%</span></>;
-                                  })()
-                                : <>{borrower?.fullName} · {m(loan?.principal ?? 0)} · {loan?.rate}%/mo</>
-                              }
+                              {isExpanded ? (
+                                (() => {
+                                  const unpaid =
+                                    loan && loan.status === "active"
+                                      ? (() => {
+                                          const start = new Date(loan.lastPaymentDate);
+                                          const now = new Date();
+                                          if (now <= start) return 0;
+                                          return calculateCompoundInterest(
+                                            loan.principal,
+                                            loan.rate,
+                                            start,
+                                            now,
+                                            Math.max(1, loan.thresholdMonths),
+                                            !interests.some((i) => i.loanId === loan.id),
+                                          ).totalInterest;
+                                        })()
+                                      : 0;
+                                  const totalYield = loanTotal + unpaid;
+                                  const yieldPct =
+                                    (loan?.principal ?? 0) > 0
+                                      ? (totalYield / (loan?.principal ?? 1)) * 100
+                                      : 0;
+                                  return (
+                                    <>
+                                      {borrower?.fullName} ·{" "}
+                                      <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">
+                                        {m(loan?.principal ?? 0)}
+                                      </span>{" "}
+                                      ·{" "}
+                                      <span className="text-sky-600 dark:text-sky-400">
+                                        {loan?.rate}%/mo
+                                      </span>{" "}
+                                      · Collected{" "}
+                                      <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                        {m(loanTotal)}
+                                      </span>
+                                      {unpaid > 0 && (
+                                        <>
+                                          {" "}
+                                          · Unpaid{" "}
+                                          <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
+                                            {m(unpaid, { decimals: 0 })}
+                                          </span>
+                                        </>
+                                      )}{" "}
+                                      · Yield{" "}
+                                      <span className="font-mono font-semibold text-violet-600 dark:text-violet-400">
+                                        {yieldPct.toFixed(1)}%
+                                      </span>
+                                    </>
+                                  );
+                                })()
+                              ) : (
+                                <>
+                                  {borrower?.fullName} · {m(loan?.principal ?? 0)} · {loan?.rate}
+                                  %/mo
+                                </>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -394,53 +480,74 @@ export default function History() {
                             className="overflow-hidden hidden sm:block"
                           >
                             <div className="bg-slate-50/80 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700/40">
-                            <div className="px-5 pb-3 relative max-h-64 overflow-y-auto">
-                              <div className="absolute left-[28px] top-0 bottom-3 w-px bg-gradient-to-b from-sky-300/30 to-transparent" />
-                              <div className="space-y-0.5">
-                                {entries.map((h, idx) => {
-                                  const isLatest = latestPerLoan.get(h.loanId) === h.id;
-                                  return (
-                                    <div
-                                      key={h.id}
-                                      className="relative flex gap-3 group py-2 hover:bg-sky-50/30 dark:hover:bg-sky-950/10 rounded-lg px-1 transition-colors"
-                                    >
-                                      <div className="relative z-10 shrink-0 mt-1.5">
-                                        <div
-                                          className={`w-2 h-2 rounded-full transition-all ${idx === 0 ? "bg-sky-500 shadow-[0_0_6px_rgba(56,189,248,0.3)]" : "bg-slate-300 dark:bg-slate-600 group-hover:bg-sky-400"}`}
-                                        />
-                                      </div>
-                                      <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                                        <div className="min-w-0">
-                                          <div className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                                            {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                              <div className="px-5 pb-3 relative max-h-64 overflow-y-auto">
+                                <div className="absolute left-[28px] top-0 bottom-3 w-px bg-gradient-to-b from-sky-300/30 to-transparent" />
+                                <div className="space-y-0.5">
+                                  {entries.map((h, idx) => {
+                                    const isLatest = latestPerLoan.get(h.loanId) === h.id;
+                                    return (
+                                      <div
+                                        key={h.id}
+                                        className="relative flex gap-3 group py-2 hover:bg-sky-50/30 dark:hover:bg-sky-950/10 rounded-lg px-1 transition-colors"
+                                      >
+                                        <div className="relative z-10 shrink-0 mt-1.5">
+                                          <div
+                                            className={`w-2 h-2 rounded-full transition-all ${idx === 0 ? "bg-sky-500 shadow-[0_0_6px_rgba(56,189,248,0.3)]" : "bg-slate-300 dark:bg-slate-600 group-hover:bg-sky-400"}`}
+                                          />
+                                        </div>
+                                        <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                                          <div className="min-w-0">
+                                            <div className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
+                                              {format(addDays(new Date(h.startDate), 1), "dd MMM")}{" "}
+                                              → {format(new Date(h.endDate), "dd MMM yy")}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                              {(() => {
+                                                const d = differenceInDays(
+                                                  new Date(h.endDate),
+                                                  new Date(h.startDate),
+                                                );
+                                                const isPartial =
+                                                  differenceInMonths(
+                                                    new Date(h.endDate),
+                                                    new Date(h.startDate),
+                                                  ) < 1;
+                                                const perDay = isPartial
+                                                  ? h.amount / d
+                                                  : h.amount / 30;
+                                                return (
+                                                  <>
+                                                    {isPartial && <>{d}d · </>}
+                                                    {m(perDay)}/day ·{" "}
+                                                    {new Date(h.createdAt).toLocaleDateString()}
+                                                  </>
+                                                );
+                                              })()}
+                                            </div>
                                           </div>
-                                          <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                                            {new Date(h.createdAt).toLocaleDateString()}
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            {isLatest && !isClosed && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setDeleteTargetId(h.id);
+                                                }}
+                                                className="text-red-400 dark:text-red-500 p-1 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                                title="Undo"
+                                              >
+                                                <Trash2 className="w-3 h-3" />
+                                              </button>
+                                            )}
+                                            <span className="font-mono text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                              {m(h.amount, { decimals: 0 })}
+                                            </span>
                                           </div>
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                          {isLatest && !isClosed && (
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setDeleteTargetId(h.id);
-                                              }}
-                                              className="text-red-400 dark:text-red-500 p-1 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                                              title="Undo"
-                                            >
-                                              <Trash2 className="w-3 h-3" />
-                                            </button>
-                                          )}
-                                          <span className="font-mono text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                            {m(h.amount, { decimals: 0 })}
-                                          </span>
-                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
                             </div>
                           </motion.div>
                         )}
@@ -474,143 +581,203 @@ export default function History() {
 
       {/* ══════ Mobile Bottom Sheet for Grouped View ══════ */}
       <AnimatePresence>
-        {mobileSheetLoanId && (() => {
-          const sheetLoan = loanMap.get(mobileSheetLoanId);
-          const sheetBorrower = sheetLoan ? borrowerMap.get(sheetLoan.borrowerId) : undefined;
-          const sheetIsClosed = sheetLoan?.status === "closed";
-          const sheetEntries = interests
-            .filter((i) => i.loanId === mobileSheetLoanId)
-            .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
-          const sheetTotal = sheetEntries.reduce((s, e) => s + e.amount, 0);
-          if (!sheetLoan) return null;
-          return (
-            <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:hidden">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-                onClick={() => setMobileSheetLoanId(null)}
-              />
-              <motion.div
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0 }}
-                transition={{ type: "spring", damping: 28, stiffness: 220 }}
-                className="relative w-full bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 rounded-t-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
-              >
-                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
+        {mobileSheetLoanId &&
+          (() => {
+            const sheetLoan = loanMap.get(mobileSheetLoanId);
+            const sheetBorrower = sheetLoan ? borrowerMap.get(sheetLoan.borrowerId) : undefined;
+            const sheetIsClosed = sheetLoan?.status === "closed";
+            const sheetEntries = interests
+              .filter((i) => i.loanId === mobileSheetLoanId)
+              .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+            const sheetTotal = sheetEntries.reduce((s, e) => s + e.amount, 0);
+            if (!sheetLoan) return null;
+            return (
+              <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:hidden">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+                  onClick={() => setMobileSheetLoanId(null)}
+                />
+                <motion.div
+                  initial={{ y: "100%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: "100%", opacity: 0 }}
+                  transition={{ type: "spring", damping: 28, stiffness: 220 }}
+                  className="relative w-full bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 rounded-t-2xl shadow-2xl safe-area-bottom max-h-[85vh] flex flex-col overflow-hidden"
+                >
+                  <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600 mx-auto mt-2.5 mb-1 shrink-0" />
 
-                {/* Stats card — sticky */}
-                <div className="px-4 pt-1 pb-2 shrink-0">
-                  <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-slate-950 p-4 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-sky-500/5 -translate-y-8 translate-x-8" />
-                    <div className="relative">
-                      <div className="flex items-start justify-between mb-2.5">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-base font-black font-mono text-white">{sheetLoan.collateralCode || "—"}</span>
-                            {sheetIsClosed && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">CLOSED</span>}
-                          </div>
-                          <p className="text-[11px] text-slate-400">{sheetBorrower?.fullName}</p>
-                        </div>
-                        <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded">{sheetLoan.rate}%/mo</span>
-                      </div>
-                      {(() => {
-                        const sheetUnpaid = sheetLoan.status === "active" ? (() => {
-                          const start = new Date(sheetLoan.lastPaymentDate);
-                          const now = new Date();
-                          if (now <= start) return 0;
-                          return calculateCompoundInterest(sheetLoan.principal, sheetLoan.rate, start, now, Math.max(1, sheetLoan.thresholdMonths)).totalInterest;
-                        })() : 0;
-                        const sheetYieldTotal = sheetTotal + sheetUnpaid;
-                        const sheetYieldPct = sheetLoan.principal > 0 ? (sheetYieldTotal / sheetLoan.principal) * 100 : 0;
-                        return (
-                          <div className="grid grid-cols-4 gap-2 pt-2.5 border-t border-slate-700/50">
-                            <div>
-                              <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Principal</div>
-                              <div className="text-xs font-semibold text-white font-mono mt-0.5">{m(sheetLoan.principal)}</div>
-                            </div>
-                            <div>
-                              <div className="text-[9px] text-emerald-500 uppercase tracking-wider font-bold">Collected</div>
-                              <div className="text-xs font-semibold text-emerald-300 font-mono mt-0.5">{m(sheetTotal)}</div>
-                            </div>
-                            <div>
-                              <div className="text-[9px] text-amber-500 uppercase tracking-wider font-bold">Unpaid</div>
-                              <div className="text-xs font-semibold text-amber-300 font-mono mt-0.5">{m(sheetUnpaid, { decimals: 0 })}</div>
-                            </div>
-                            <div>
-                              <div className="text-[9px] text-violet-500 uppercase tracking-wider font-bold">Yield</div>
-                              <div className="text-xs font-semibold text-violet-300 font-mono mt-0.5">{sheetYieldPct.toFixed(1)}%</div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="overflow-y-auto flex-1 px-4 pb-4">
-                  {/* Timeline entries */}
-                  <div className="relative">
-                    <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gradient-to-b from-sky-400/40 via-blue-300/20 to-transparent" />
-                    <div className="space-y-0.5">
-                      {sheetEntries.map((h, idx) => {
-                        const isLatest = latestPerLoan.get(h.loanId) === h.id;
-                        return (
-                          <div
-                            key={h.id}
-                            className="relative flex gap-3 group py-2 rounded-lg px-1"
-                          >
-                            <div className="relative z-10 shrink-0 mt-1.5">
-                              <div
-                                className={`w-[8px] h-[8px] rounded-full ${idx === 0 ? "bg-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.4)]" : "bg-slate-300 dark:bg-slate-600"}`}
-                              />
-                            </div>
-                            <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                              <div className="min-w-0">
-                                <div className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                                  {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
-                                </div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                                  {new Date(h.createdAt).toLocaleDateString()}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {isLatest && !sheetIsClosed && (
-                                  <button
-                                    onClick={() => { setMobileSheetLoanId(null); setDeleteTargetId(h.id); }}
-                                    className="text-red-400 dark:text-red-500 p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40"
-                                    title="Undo"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
-                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                                  {m(h.amount, { decimals: 0 })}
+                  {/* Stats card — sticky */}
+                  <div className="px-4 pt-1 pb-2 shrink-0">
+                    <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-slate-950 p-4 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-sky-500/5 -translate-y-8 translate-x-8" />
+                      <div className="relative">
+                        <div className="flex items-start justify-between mb-2.5">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-base font-black font-mono text-white">
+                                {sheetLoan.collateralCode || "—"}
+                              </span>
+                              {sheetIsClosed && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-700 text-slate-400">
+                                  CLOSED
                                 </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400">{sheetBorrower?.fullName}</p>
+                          </div>
+                          <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded">
+                            {sheetLoan.rate}%/mo
+                          </span>
+                        </div>
+                        {(() => {
+                          const sheetUnpaid =
+                            sheetLoan.status === "active"
+                              ? (() => {
+                                  const start = new Date(sheetLoan.lastPaymentDate);
+                                  const now = new Date();
+                                  if (now <= start) return 0;
+                                  return calculateCompoundInterest(
+                                    sheetLoan.principal,
+                                    sheetLoan.rate,
+                                    start,
+                                    now,
+                                    Math.max(1, sheetLoan.thresholdMonths),
+                                    !interests.some((i) => i.loanId === sheetLoan.id),
+                                  ).totalInterest;
+                                })()
+                              : 0;
+                          const sheetYieldTotal = sheetTotal + sheetUnpaid;
+                          const sheetYieldPct =
+                            sheetLoan.principal > 0
+                              ? (sheetYieldTotal / sheetLoan.principal) * 100
+                              : 0;
+                          return (
+                            <div className="grid grid-cols-4 gap-2 pt-2.5 border-t border-slate-700/50">
+                              <div>
+                                <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">
+                                  Principal
+                                </div>
+                                <div className="text-xs font-semibold text-white font-mono mt-0.5">
+                                  {m(sheetLoan.principal)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[9px] text-emerald-500 uppercase tracking-wider font-bold">
+                                  Collected
+                                </div>
+                                <div className="text-xs font-semibold text-emerald-300 font-mono mt-0.5">
+                                  {m(sheetTotal)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[9px] text-amber-500 uppercase tracking-wider font-bold">
+                                  Unpaid
+                                </div>
+                                <div className="text-xs font-semibold text-amber-300 font-mono mt-0.5">
+                                  {m(sheetUnpaid, { decimals: 0 })}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[9px] text-violet-500 uppercase tracking-wider font-bold">
+                                  Yield
+                                </div>
+                                <div className="text-xs font-semibold text-violet-300 font-mono mt-0.5">
+                                  {sheetYieldPct.toFixed(1)}%
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Footer */}
-                <div className="border-t border-slate-100 dark:border-slate-700/50 flex shrink-0">
-                  <button
-                    onClick={() => setMobileSheetLoanId(null)}
-                    className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          );
-        })()}
+                  <div className="overflow-y-auto flex-1 px-4 pb-4">
+                    {/* Timeline entries */}
+                    <div className="relative">
+                      <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gradient-to-b from-sky-400/40 via-blue-300/20 to-transparent" />
+                      <div className="space-y-0.5">
+                        {sheetEntries.map((h, idx) => {
+                          const isLatest = latestPerLoan.get(h.loanId) === h.id;
+                          return (
+                            <div
+                              key={h.id}
+                              className="relative flex gap-3 group py-2 rounded-lg px-1"
+                            >
+                              <div className="relative z-10 shrink-0 mt-1.5">
+                                <div
+                                  className={`w-[8px] h-[8px] rounded-full ${idx === 0 ? "bg-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.4)]" : "bg-slate-300 dark:bg-slate-600"}`}
+                                />
+                              </div>
+                              <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
+                                    {format(addDays(new Date(h.startDate), 1), "dd MMM")} →{" "}
+                                    {format(new Date(h.endDate), "dd MMM yy")}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                                    {(() => {
+                                      const d = differenceInDays(
+                                        new Date(h.endDate),
+                                        new Date(h.startDate),
+                                      );
+                                      const isPartial =
+                                        differenceInMonths(
+                                          new Date(h.endDate),
+                                          new Date(h.startDate),
+                                        ) < 1;
+                                      const perDay = isPartial ? h.amount / d : h.amount / 30;
+                                      return (
+                                        <>
+                                          {isPartial && <>{d}d · </>}
+                                          {m(perDay)}/day ·{" "}
+                                          {new Date(h.createdAt).toLocaleDateString()}
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {isLatest && !sheetIsClosed && (
+                                    <button
+                                      onClick={() => {
+                                        setMobileSheetLoanId(null);
+                                        setDeleteTargetId(h.id);
+                                      }}
+                                      className="text-red-400 dark:text-red-500 p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40"
+                                      title="Undo"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                                    {m(h.amount, { decimals: 0 })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="border-t border-slate-100 dark:border-slate-700/50 flex shrink-0">
+                    <button
+                      onClick={() => setMobileSheetLoanId(null)}
+                      className="flex-1 py-3.5 text-xs font-bold tracking-widest uppercase text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            );
+          })()}
       </AnimatePresence>
 
       {/* ══════ Delete Confirmation Modal ══════ */}

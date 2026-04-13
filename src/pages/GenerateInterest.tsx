@@ -20,7 +20,7 @@ import { calculateCompoundInterest } from "../lib/interest";
 import { useMockData } from "../lib/MockContext";
 import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInDays, differenceInMonths } from "date-fns";
 import { Select } from "../components/ui/Select";
 import { usePrivacy } from "../lib/PrivacyContext";
 import { lockScroll } from "../lib/utils";
@@ -80,11 +80,12 @@ export default function GenerateInterest() {
         startDate,
         end,
         Math.max(1, loan.thresholdMonths),
+        !interests.some((i) => i.loanId === loan.id),
       );
     } catch {
       return null;
     }
-  }, [targetDate, loan]);
+  }, [targetDate, loan, interests]);
 
   useEffect(() => {
     setSelectedIndex(-1);
@@ -109,6 +110,7 @@ export default function GenerateInterest() {
       startDate,
       end,
       Math.max(1, loan.thresholdMonths),
+      !interests.some((i) => i.loanId === loan.id),
     );
     return {
       ...result,
@@ -129,8 +131,9 @@ export default function GenerateInterest() {
       start,
       today,
       Math.max(1, loan.thresholdMonths),
+      !interests.some((i) => i.loanId === loan.id),
     ).totalInterest;
-  }, [loan]);
+  }, [loan, interests]);
 
   const totalCollectedInterest = useMemo(
     () => loanHistory.reduce((sum, h) => sum + h.amount, 0),
@@ -144,13 +147,12 @@ export default function GenerateInterest() {
       const selectedPeriods = fullCalculation.periods.slice(0, selectedIndex + 1);
       for (let idx = 0; idx < selectedPeriods.length; idx++) {
         const p = selectedPeriods[idx];
-        const isLast = idx === selectedPeriods.length - 1;
         await addInterest({
           loanId: loan.id,
           startDate: format(p.startDate, "yyyy-MM-dd"),
           endDate: format(p.endDate, "yyyy-MM-dd"),
           amount: p.amount,
-          newPrincipal: isLast ? selectedCalculation.finalPrincipal : p.principalAtTime,
+          newPrincipal: loan.principal,
         });
       }
       toast.success(`${selectedPeriods.length} month(s) saved!`);
@@ -211,7 +213,7 @@ export default function GenerateInterest() {
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
       doc.text(
-        `${loan.collateralCode || "—"}  ·  ₹${loan.principal.toLocaleString("en-IN")}  ·  ${loan.rate}%/mo`,
+        `${loan.collateralCode || "-"}  |  Rs.${loan.principal.toLocaleString("en-IN")}  |  ${loan.rate}%/mo`,
         margin,
         y + 5,
       );
@@ -244,13 +246,13 @@ export default function GenerateInterest() {
           doc.setTextColor(71, 85, 105);
           doc.text(`${idx + 1}`, margin + 3, y + 2);
           doc.text(
-            `${format(addDays(new Date(h.startDate), 1), "dd MMM yy")} → ${format(new Date(h.endDate), "dd MMM yy")}`,
+            `${format(addDays(new Date(h.startDate), 1), "dd MMM yy")} - ${format(new Date(h.endDate), "dd MMM yy")}`,
             margin + 14,
             y + 2,
           );
           doc.setTextColor(15, 23, 42);
           doc.setFont("helvetica", "bold");
-          doc.text(`₹${h.amount.toLocaleString("en-IN")}`, pw - margin - 3, y + 2, {
+          doc.text(`Rs.${h.amount.toLocaleString("en-IN")}`, pw - margin - 3, y + 2, {
             align: "right",
           });
           doc.setFont("helvetica", "normal");
@@ -266,7 +268,7 @@ export default function GenerateInterest() {
       doc.setTextColor(16, 185, 129);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text(`₹${totalCollectedInterest.toLocaleString("en-IN")}`, margin + 5, y + 12);
+      doc.text(`Rs.${totalCollectedInterest.toLocaleString("en-IN")}`, margin + 5, y + 12);
       doc.setTextColor(148, 163, 184);
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
@@ -428,27 +430,47 @@ export default function GenerateInterest() {
                           return (
                             <div
                               key={idx}
-                              onClick={() => setSelectedIndex(selectedIndex === idx ? idx - 1 : idx)}
+                              onClick={() =>
+                                setSelectedIndex(selectedIndex === idx ? idx - 1 : idx)
+                              }
                               className={`group relative p-3 rounded-lg border transition-all duration-200 cursor-pointer
-                                ${isSelected
-                                  ? "bg-sky-50/80 dark:bg-sky-900/20 border-sky-300 dark:border-sky-600/40"
-                                  : "bg-slate-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700/50"
+                                ${
+                                  isSelected
+                                    ? "bg-sky-50/80 dark:bg-sky-900/20 border-sky-300 dark:border-sky-600/40"
+                                    : "bg-slate-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700/50"
                                 }`}
                             >
                               <div className="flex items-center gap-2.5 w-full">
-                                <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center border-2 transition-all ${isSelected ? "bg-sky-500 border-sky-400 text-white" : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-slate-400"}`}>
-                                  <span className="font-mono text-[10px] font-black">{idx + 1}</span>
+                                <div
+                                  className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center border-2 transition-all ${isSelected ? "bg-sky-500 border-sky-400 text-white" : "bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-slate-400"}`}
+                                >
+                                  <span className="font-mono text-[10px] font-black">
+                                    {idx + 1}
+                                  </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className={`text-[11px] font-mono font-semibold truncate ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
-                                    {format(addDays(p.startDate, 1), "dd MMM")} → {format(p.endDate, "dd MMM yy")}
-                                    {p.label !== "1 Month" && <span className={`ml-1.5 text-[9px] ${isSelected ? "text-sky-500" : "text-slate-400"}`}>{p.label}</span>}
+                                  <div
+                                    className={`text-[11px] font-mono font-semibold truncate ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
+                                  >
+                                    {format(addDays(p.startDate, 1), "dd MMM")} →{" "}
+                                    {format(p.endDate, "dd MMM yy")}
+                                    {p.label !== "1 Month" && (
+                                      <span
+                                        className={`ml-1.5 text-[9px] ${isSelected ? "text-sky-500" : "text-slate-400"}`}
+                                      >
+                                        {p.label}
+                                      </span>
+                                    )}
                                   </div>
-                                  <div className={`text-[10px] ${isSelected ? "text-violet-500 dark:text-violet-400" : "text-violet-400 dark:text-violet-500"}`}>
+                                  <div
+                                    className={`text-[10px] ${isSelected ? "text-violet-500 dark:text-violet-400" : "text-violet-400 dark:text-violet-500"}`}
+                                  >
                                     Base {m(p.principalAtTime, { decimals: 0 })}
                                   </div>
                                 </div>
-                                <span className={`text-sm font-black font-mono shrink-0 ${isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-emerald-600 dark:text-emerald-400"}`}>
+                                <span
+                                  className={`text-sm font-black font-mono shrink-0 ${isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-emerald-600 dark:text-emerald-400"}`}
+                                >
                                   {m(p.amount, { decimals: 0 })}
                                 </span>
                               </div>
@@ -462,10 +484,16 @@ export default function GenerateInterest() {
                         <div className="rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-hidden">
                           {/* Header */}
                           <div className="flex items-center py-2.5 px-4 bg-slate-50 dark:bg-slate-800/80 text-[10px] font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700/50">
-                            <div className="w-10 shrink-0 text-slate-400 dark:text-slate-500">#</div>
+                            <div className="w-10 shrink-0 text-slate-400 dark:text-slate-500">
+                              #
+                            </div>
                             <div className="flex-1 text-slate-400 dark:text-slate-500">Period</div>
-                            <div className="w-36 text-right shrink-0 text-slate-400 dark:text-slate-500">Base</div>
-                            <div className="w-36 text-right shrink-0 text-emerald-600 dark:text-emerald-400">Interest</div>
+                            <div className="w-36 text-right shrink-0 text-slate-400 dark:text-slate-500">
+                              Base
+                            </div>
+                            <div className="w-36 text-right shrink-0 text-emerald-600 dark:text-emerald-400">
+                              Interest
+                            </div>
                           </div>
                           {/* Rows */}
                           {fullCalculation.periods.map((p, idx) => {
@@ -474,30 +502,51 @@ export default function GenerateInterest() {
                             return (
                               <div
                                 key={idx}
-                                onClick={() => setSelectedIndex(selectedIndex === idx ? idx - 1 : idx)}
+                                onClick={() =>
+                                  setSelectedIndex(selectedIndex === idx ? idx - 1 : idx)
+                                }
                                 className={`flex items-center py-3 px-4 cursor-pointer transition-all duration-150 border-l-[3px]
-                                  ${isSelected
-                                    ? "bg-sky-50 dark:bg-sky-900/15 border-l-sky-500"
-                                    : `${isEven ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-800/20"} border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/30`
+                                  ${
+                                    isSelected
+                                      ? "bg-sky-50 dark:bg-sky-900/15 border-l-sky-500"
+                                      : `${isEven ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-800/20"} border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/30`
                                   }`}
                               >
-                                <div className={`w-10 shrink-0 font-mono text-xs font-black ${isSelected ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500"}`}>
+                                <div
+                                  className={`w-10 shrink-0 font-mono text-xs font-black ${isSelected ? "text-sky-600 dark:text-sky-400" : "text-slate-400 dark:text-slate-500"}`}
+                                >
                                   {idx + 1}
                                 </div>
-                                <div className={`flex-1 text-sm min-w-0 ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>
-                                  <span className="font-mono">{format(addDays(p.startDate, 1), "dd MMM yyyy")}</span>
-                                  <span className={`mx-2 ${isSelected ? "text-sky-400" : "text-slate-300 dark:text-slate-600"}`}>→</span>
-                                  <span className="font-mono">{format(p.endDate, "dd MMM yyyy")}</span>
+                                <div
+                                  className={`flex-1 text-sm min-w-0 ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}
+                                >
+                                  <span className="font-mono">
+                                    {format(addDays(p.startDate, 1), "dd MMM yyyy")}
+                                  </span>
+                                  <span
+                                    className={`mx-2 ${isSelected ? "text-sky-400" : "text-slate-300 dark:text-slate-600"}`}
+                                  >
+                                    →
+                                  </span>
+                                  <span className="font-mono">
+                                    {format(p.endDate, "dd MMM yyyy")}
+                                  </span>
                                   {p.label !== "1 Month" && (
-                                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isSelected ? "bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
+                                    <span
+                                      className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isSelected ? "bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}
+                                    >
                                       {p.label}
                                     </span>
                                   )}
                                 </div>
-                                <div className={`w-36 text-right text-sm font-mono font-bold shrink-0 ${isSelected ? "text-violet-700 dark:text-violet-300" : "text-violet-500 dark:text-violet-400"}`}>
+                                <div
+                                  className={`w-36 text-right text-sm font-mono font-bold shrink-0 ${isSelected ? "text-violet-700 dark:text-violet-300" : "text-violet-500 dark:text-violet-400"}`}
+                                >
                                   {m(p.principalAtTime, { decimals: 0 })}
                                 </div>
-                                <div className={`w-36 text-right font-mono text-sm font-black shrink-0 ${isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-emerald-600 dark:text-emerald-400"}`}>
+                                <div
+                                  className={`w-36 text-right font-mono text-sm font-black shrink-0 ${isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-emerald-600 dark:text-emerald-400"}`}
+                                >
                                   {m(p.amount, { decimals: 0 })}
                                 </div>
                               </div>
@@ -530,9 +579,15 @@ export default function GenerateInterest() {
                         <div className="relative">
                           <div className="flex items-start justify-between mb-3">
                             <div>
-                              <div className="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold mb-0.5">Principal</div>
-                              <div className="text-xl font-black text-white font-mono tracking-tight leading-none">{m(loan.principal)}</div>
-                              <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded inline-block mt-2">{loan.rate}%/mo</span>
+                              <div className="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold mb-0.5">
+                                Principal
+                              </div>
+                              <div className="text-xl font-black text-white font-mono tracking-tight leading-none">
+                                {m(loan.principal)}
+                              </div>
+                              <span className="text-xs font-bold text-sky-400 font-mono bg-sky-500/10 px-2 py-0.5 rounded inline-block mt-2">
+                                {loan.rate}%/mo
+                              </span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <button
@@ -553,16 +608,28 @@ export default function GenerateInterest() {
                           </div>
                           <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-700/50">
                             <div>
-                              <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Paid till</div>
-                              <div className="text-xs font-semibold text-slate-300 font-mono mt-0.5">{format(new Date(loan.lastPaymentDate), "MMM yy")}</div>
+                              <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">
+                                Paid till
+                              </div>
+                              <div className="text-xs font-semibold text-slate-300 font-mono mt-0.5">
+                                {format(new Date(loan.lastPaymentDate), "MMM yy")}
+                              </div>
                             </div>
                             <div>
-                              <div className="text-[9px] text-emerald-500 uppercase tracking-wider font-bold">Collected</div>
-                              <div className="text-xs font-semibold text-emerald-300 font-mono mt-0.5">{m(totalCollectedInterest)}</div>
+                              <div className="text-[9px] text-emerald-500 uppercase tracking-wider font-bold">
+                                Collected
+                              </div>
+                              <div className="text-xs font-semibold text-emerald-300 font-mono mt-0.5">
+                                {m(totalCollectedInterest)}
+                              </div>
                             </div>
                             <div>
-                              <div className="text-[9px] text-amber-500 uppercase tracking-wider font-bold">Unpaid</div>
-                              <div className="text-xs font-semibold text-amber-300 font-mono mt-0.5">{m(currentUnpaidInterest)}</div>
+                              <div className="text-[9px] text-amber-500 uppercase tracking-wider font-bold">
+                                Unpaid
+                              </div>
+                              <div className="text-xs font-semibold text-amber-300 font-mono mt-0.5">
+                                {m(currentUnpaidInterest)}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -575,10 +642,26 @@ export default function GenerateInterest() {
                           <div className="flex items-center gap-2.5 sm:gap-4">
                             <div className="flex-1 min-w-0">
                               <div className="text-[11px] sm:text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 truncate">
-                                {format(addDays(new Date(h.startDate), 1), "dd MMM")} → {format(new Date(h.endDate), "dd MMM yy")}
+                                {format(addDays(new Date(h.startDate), 1), "dd MMM")} →{" "}
+                                {format(new Date(h.endDate), "dd MMM yy")}
                               </div>
                               <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                                {new Date(h.createdAt).toLocaleDateString()}
+                                {(() => {
+                                  const d = differenceInDays(
+                                    new Date(h.endDate),
+                                    new Date(h.startDate),
+                                  );
+                                  const isPartial =
+                                    differenceInMonths(new Date(h.endDate), new Date(h.startDate)) <
+                                    1;
+                                  const perDay = isPartial ? h.amount / d : h.amount / 30;
+                                  return (
+                                    <>
+                                      {isPartial && <>{d}d · </>}
+                                      {m(perDay)}/day · {new Date(h.createdAt).toLocaleDateString()}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <span className="text-sm sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono shrink-0">
@@ -667,7 +750,8 @@ export default function GenerateInterest() {
                 disabled={selectedIndex < 0 || committing}
                 className="tech-button-primary px-5 py-2.5 sm:px-6 sm:py-3 text-xs tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 outline-none"
               >
-                <HandCoins className="w-4 h-4 sm:w-5 sm:h-5 -rotate-12" /> {committing ? "Saving…" : "Collect"}
+                <HandCoins className="w-4 h-4 sm:w-5 sm:h-5 -rotate-12" />{" "}
+                {committing ? "Saving…" : "Collect"}
               </button>
             </div>
           </div>
@@ -752,7 +836,9 @@ export default function GenerateInterest() {
                     <XCircle className="w-5 h-5 text-red-500" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">Close Loan</h3>
+                    <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                      Close Loan
+                    </h3>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate">
                       {loan.collateralCode || "—"} — {borrower.fullName}
                     </p>
@@ -761,21 +847,41 @@ export default function GenerateInterest() {
 
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-x-4 flex-wrap text-[11px] text-slate-400 dark:text-slate-500">
-                    <span>Principal <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">{m(loan.principal)}</span></span>
-                    <span>Collected <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">{m(totalCollectedInterest)}</span></span>
+                    <span>
+                      Principal{" "}
+                      <span className="font-mono font-semibold text-slate-600 dark:text-slate-300">
+                        {m(loan.principal)}
+                      </span>
+                    </span>
+                    <span>
+                      Collected{" "}
+                      <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">
+                        {m(totalCollectedInterest)}
+                      </span>
+                    </span>
                   </div>
                   {currentUnpaidInterest > 0 && (
                     <div className="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/40 rounded-lg p-2.5 flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 tracking-wide">Unpaid Interest</span>
-                      <span className="text-sm font-black text-amber-700 dark:text-amber-300 font-mono">{m(currentUnpaidInterest, { decimals: 2 })}</span>
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 tracking-wide">
+                        Unpaid Interest
+                      </span>
+                      <span className="text-sm font-black text-amber-700 dark:text-amber-300 font-mono">
+                        {m(currentUnpaidInterest, { decimals: 2 })}
+                      </span>
                     </div>
                   )}
                   <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700/50 rounded-lg p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 tracking-wide">Settlement</span>
-                      <span className="text-lg font-black text-sky-700 dark:text-sky-300 font-mono">{m(loan.principal + currentUnpaidInterest, { decimals: 2 })}</span>
+                      <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 tracking-wide">
+                        Settlement
+                      </span>
+                      <span className="text-lg font-black text-sky-700 dark:text-sky-300 font-mono">
+                        {m(loan.principal + currentUnpaidInterest, { decimals: 2 })}
+                      </span>
                     </div>
-                    <p className="text-[10px] text-sky-500 dark:text-sky-400/60 mt-0.5 tracking-wide">Principal + Unpaid Interest</p>
+                    <p className="text-[10px] text-sky-500 dark:text-sky-400/60 mt-0.5 tracking-wide">
+                      Principal + Unpaid Interest
+                    </p>
                   </div>
                 </div>
 
@@ -793,7 +899,10 @@ export default function GenerateInterest() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-wide mb-1.5 ml-1 flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5" /> Note <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">OPTIONAL</span>
+                      <FileText className="w-3.5 h-3.5" /> Note{" "}
+                      <span className="text-slate-300 dark:text-slate-600 font-mono text-[10px]">
+                        OPTIONAL
+                      </span>
                     </label>
                     <textarea
                       value={closureNote}
